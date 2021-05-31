@@ -1,0 +1,7 @@
+*.ipynb
+*.zip
+*.swp
+
+/model
+/input
+/__pycache__
