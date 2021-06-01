@@ -6,7 +6,6 @@ import time
 from confluent_kafka import Consumer
 from confluent_kafka import Producer
 from confluent_kafka import KafkaException
-from six import class_types
 
 import tensorflow as tf
 
@@ -443,8 +442,8 @@ if __name__ == "__main__":
     pre_processing_p.join()
 
     """
-    pool = multiprocessing.Pool(processes=2)
-    pool.map(anomaly_detection)
-    pool.close()
-    pool.join()
+    for i in range(5):
+        p = multiprocessing.Process(target=function)
+        jobs.append(p)
+        p.start()
     """
