@@ -1,4 +1,4 @@
-# Anomaly Detection
+# AI Engine
 
 
 ## Requirements
@@ -24,7 +24,7 @@ Installable Python kits, and information about using Python, are available at
 ## Getting started
 
 ```bash
-$ python anomaly_detection.py
+$ python ai_engine.py
 ```
 
 ## Example
