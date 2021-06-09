@@ -81,11 +81,13 @@ def get_row_data(_conf):
     }
     producer_config = {
                    'bootstrap.servers': _conf['kafka_servers']
-                }
+    }
+
     try:
         _decoded_msg_list = []
         consumer = Consumer(consumer_config)
         consumer.subscribe([_conf['topic_consumer']])
+        producer = Producer(producer_config)
         cnt = 0
         _decoded_mean_msg_list = []
         while True:
@@ -137,7 +139,6 @@ def get_row_data(_conf):
                     _add_roll_data = _add_roll_list[i]
                     #[opcode, time, load_spindel, t_code]
                     messsage = _add_roll_data[0] + "," + str(_add_roll_data[1]) + ","  + str(_add_roll_data[2]) + ","  + _add_roll_data[3]
-                    producer = Producer(producer_config)
                     data = messsage.encode('utf-8')
                     producer.produce(_conf['topic_producer'], data)
                     producer.poll(1)
