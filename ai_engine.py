@@ -407,7 +407,7 @@ def anomaly_detection():
             result = prediction(model, _np_data_array)
             _signal_data = create_signal(_np_data_array)
             _mae = loss_function(result, _signal_data)
-            _code_with_loss = str(_pre_processed_list[0][0]) + "," + _pre_processed_list[0][1]  + "," + str(_mae)
+            _code_with_loss = str(_pre_processed_list[PREDICT_INDEX][0]) + "," + _pre_processed_list[PREDICT_INDEX][1]  + "," + str(_mae)
             loss_data_queue.put(_code_with_loss)
             asyncio.run(send_loss_info(_mae))
             print(_code_with_loss)
