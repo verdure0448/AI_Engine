@@ -1,0 +1,12 @@
+{
+    "kafka_servers" : "9.8.100.152:9092",
+    "consumer_group_id" : "MH0101001-CNC01-test-01",
+    "auto_offset_reset" : "latest",
+    "topic_consumer" : "MH0101001-CNC01",
+    "topic_producer" : "MH0101001-CNC01-preprocessed",
+    "end_t_code" : "T0000",
+    "op_code_index" : 0,
+    "time_index" : 1,
+    "load_spindle_index" : 4,
+    "t_code_index" : 8
+}

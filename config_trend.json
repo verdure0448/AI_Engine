@@ -1,0 +1,33 @@
+{
+    "kafka_servers" : "9.8.100.152:9092",
+    "consumer_group_id" : "cnc_test_26",
+    "auto_offset_reset" : "latest",
+    "topic_consumer" : "MH0101001-CNC01-preprocessed",
+    "topic_trend" : "MH0101001-CNC01-trend",
+    "topic_loss" : "MH0101001-CNC01-loss",
+    "topic_classified" : "MH0101001-CNC01-classified",
+
+    "sleep_time" : 0.01,
+    "data_size" : 51,
+    "predict_index" : 50,
+    "continue_zero_count" : 30,
+    "idle_count" : 500,
+
+    "request_address" : "http://9.8.100.153:1234",
+    "type_cycle" : "/cycle-info",
+    "type_loss" : "/real-time-loss",
+    "type_empty" : "/work-drop",
+    "type_work" : "/work-info",
+
+    "start_t_code" : "T8080",
+    "end_t_code" : "T0000",
+    "model_path" : "/home/rnd01/workspace/model/bi-lstm-state-cont-model-010-165-0.005295-0.003548.h5",
+
+    "min_spindle_load" : 250,
+    "max_spindle_load" : 14000,
+
+    "op_code_index" : 0,
+    "time_index" : 1,
+    "load_spindle_index" : 2,
+    "t_code_index" : 3
+}

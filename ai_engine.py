@@ -251,7 +251,6 @@ def pre_processing(STATE):
     while True:
         if not row_data_queue.empty():
             row_data = row_data_queue.get()
-            print(row_data)
             _row_data_list.append(row_data)
             cnt = 0
             zero_cnt = 0

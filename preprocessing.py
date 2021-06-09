@@ -79,10 +79,13 @@ def get_row_data(_conf):
         'group.id': _conf['consumer_group_id'],
         'auto.offset.reset': _conf['auto_offset_reset']
     }
+    producer_config = {
+                   'bootstrap.servers': _conf['kafka_servers']
+                }
     try:
         _decoded_msg_list = []
         consumer = Consumer(consumer_config)
-        consumer.subscribe([_conf['topic_preprocess_con']])
+        consumer.subscribe([_conf['topic_consumer']])
         cnt = 0
         _decoded_mean_msg_list = []
         while True:
@@ -108,7 +111,6 @@ def get_row_data(_conf):
                 for i in range(len(decoded_msgs)):
                     _decoded_msg_list.append(decoded_msgs[i])
 
-
                 if len(_decoded_msg_list) > 1:
                     add_decode_msgs = row_data_mean(_decoded_msg_list)
             
@@ -131,18 +133,13 @@ def get_row_data(_conf):
                 _decoded_mean_msg_list = _decoded_mean_msg_list[len(_add_roll_list):]
                 #print("[DEBUG] ", len(_add_roll_list), " ", _add_roll_list)
 
-                producer_config = {
-                   'bootstrap.servers': _conf['kafka_servers']
-                }
-
                 for i in range(len(_add_roll_list)):
                     _add_roll_data = _add_roll_list[i]
                     #[opcode, time, load_spindel, t_code]
-                    #messsage = _add_roll_data[0] + "," + str(_add_roll_data[1]) + ","  + str(_add_roll_data[2]) + ","  + _add_roll_data[3]
                     messsage = _add_roll_data[0] + "," + str(_add_roll_data[1]) + ","  + str(_add_roll_data[2]) + ","  + _add_roll_data[3]
                     producer = Producer(producer_config)
                     data = messsage.encode('utf-8')
-                    producer.produce("cnc_trend", data)
+                    producer.produce(_conf['topic_producer'], data)
                     producer.poll(1)
                     print(data)
 
@@ -156,12 +153,9 @@ def get_row_data(_conf):
 
 def main():
     conf = None
-    with open("/home/rnd01/workspace/cnc_analyzer/config.json") as jsonFile:
+    with open("/home/rnd01/workspace/cnc_analyzer/config_preprocessing.json") as jsonFile:
         conf = json.load(jsonFile)
-
-    producer_config = {
-        'bootstrap.servers': conf['kafka_servers']
-    }
+        print(conf['topic_consumer'])
 
     get_row_data(conf)
 

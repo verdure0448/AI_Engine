@@ -1,9 +1,15 @@
 {
     "kafka_servers" : "9.8.100.152:9092",
-    "topic_consumer" : "cnc_test",
-    "consumer_group_id" : "cnc_test_30",
+    "topic_consumer" : "MH0101001-CNC01-classified",
+    "consumer_group_id" : "cnc_test_26",
     "auto_offset_reset" : "latest",
-    "topic_predict" : "cnc_test2",
+    "topic_predict" : "MH0101001-CNC01-detection",
+    "sleep_time" : 0.01,
+    "model_path" : "/home/rnd01/workspace/model/bi-lstm-state-cont-model-010-165-0.005295-0.003548.h5",
+    "predict_index" : 50,
+
+
+    
     "topic_loss" : "cnc_test3",
     "consumer_timeout_ms" : 1000,
     "op_code_index" : 0,
@@ -11,7 +17,7 @@
     "load_spindle_index" : 4,
     "t_code_index" : 8,
     "criteria_len" : 120,
-    "sleep_time" : 0.01,
+    
     "rolling_window" : 30,
     "data_size" : 51,
     "predict_index" : 50,
@@ -36,7 +42,6 @@
     "mailAlert" : "alertMeans=mail&",
     "appAlert" : "alertMeans=app&",
     "allAlert" : "alertMeans=all&",
-    "model_path" : "/home/rnd01/workspace/model/bi-lstm-state-cont-model-010-165-0.005295-0.003548.h5",
     "csvFilePath" : "/home/rnd01/workspace/result-030902.csv",
     "lessCnt" : 550,
     "overCnt" : 580,
