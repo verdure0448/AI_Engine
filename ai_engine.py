@@ -59,6 +59,7 @@ async def send_process_info(_opcode, _start_time, _end_time, _cycle, _count):
             print("process_connection error", str(e))
 
 
+"""
 async def status_info(_status):
     async with aiohttp.ClientSession() as session:
         _request_info = REQUEST_ADDRESS + conf['type_work'] + "?"
@@ -71,6 +72,8 @@ async def status_info(_status):
                 result = await response.read()
         except aiohttp.ClientConnectionError as e:
             print("status_connection error", str(e))
+"""
+
 
 async def send_loss_info(_loss):
     async with aiohttp.ClientSession() as session:
@@ -82,6 +85,7 @@ async def send_loss_info(_loss):
         except aiohttp.ClientConnectionError as e:
             print("loss_connection error", str(e))
 
+
 async def data_empty():
     queue_clear()
     async with aiohttp.ClientSession() as session:
@@ -90,7 +94,9 @@ async def data_empty():
             async with session.get(_request_info) as response:
                 result = await response.read()            
         except aiohttp.ClientConnectionError as e:
-            print("loss_connection error", str(e))          
+            print("loss_connection error", str(e))
+
+
 
 def queue_clear():
     if not row_data_queue.empty():
@@ -245,6 +251,7 @@ def pre_processing(STATE):
     while True:
         if not row_data_queue.empty():
             row_data = row_data_queue.get()
+            print(row_data)
             _row_data_list.append(row_data)
             cnt = 0
             zero_cnt = 0
@@ -264,7 +271,7 @@ def pre_processing(STATE):
                         if prev_load_value == 0:
                             print("Start")
                             STATE = True
-                            asyncio.run(status_info(STATE))
+                            #asyncio.run(status_info(STATE))
                             process_start_time = _row_data_list[prev_index][1]
                             find_end = False
                             _row_data_list = _row_data_list[prev_index:]
@@ -303,7 +310,7 @@ def pre_processing(STATE):
                             process_end_time = _row_data_list[0][1]
                             process_cycle = float(process_end_time) - float(process_start_time)
                             process_count = 1
-                            asyncio.run(status_info(STATE))
+                            #asyncio.run(status_info(STATE))
                             process_start_time = 0
                             process_count = 0
                             find_end = True
