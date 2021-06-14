@@ -23,10 +23,10 @@
     "max_spindle_load" : 14000,
 
     "request_address" : "http://9.8.100.153:1234",
-    "type_cycle" : "/cycle-info",
-    "type_work" : "/work-info",
-    "type_loss" : "/real-time-loss",
-    "type_empty" : "/work-drop",
+    "type_cycle" : "/main/cycle-info",
+    "type_work" : "/main/work-info",
+    "type_loss" : "/main/real-time-loss",
+    "type_empty" : "/main/work-drop",
 
     "continue_zero_count" : 30,
     "alarmServerAddress" : "http://192.168.76.200:8060/cncAlert/send?",
