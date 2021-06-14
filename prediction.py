@@ -12,6 +12,8 @@ import json
 import aiohttp
 import asyncio
 
+from pyspark.sql.functions import count
+
 async def send_loss_info(_conf, _loss):
     async with aiohttp.ClientSession() as session:
         _request_info = _conf['request_address'] + _conf['type_loss'] + "?"
@@ -81,7 +83,6 @@ def anomaly_detection(_conf, _model, _data):
     return _send_data_list
 
 
-
 def get_row_data(_conf):
     consumer_config = {
         'bootstrap.servers': _conf['kafka_servers'],
@@ -104,17 +105,25 @@ def get_row_data(_conf):
                 cnt += 1
                 #if cnt == _conf['idle_count']:
                 #TODO all clear
-                if cnt > 300:
+                """
+                if cnt > 1000:
                     print("more then 3 secs")
+                """
                 continue
+                
             if message.error():
                 raise KafkaException(message.error())
             else:
+                _result_csv = ''
                 cnt = 0
                 _data = json.loads(message.value().decode('utf-8'))
                 _result = anomaly_detection(_conf, _model, _data)
                 _result = json.dumps(_result[0])
-                producer.produce(_conf['topic_predict'], _result)
+                _result_replace = _result.replace('"','')
+                _result_list = _result_replace.strip('][').split(', ')
+                _result_csv = ','.join(_result_list)
+                print(_result_csv)
+                producer.produce(_conf['topic_predict'], _result_csv)
 
     except Exception:
         import traceback
@@ -124,7 +133,6 @@ def get_row_data(_conf):
         consumer.close()
 
 def main():
-    conf = None
     with open("/home/rnd01/workspace/cnc_analyzer/config_predict.json") as jsonFile:
         _conf = json.load(jsonFile)
 
