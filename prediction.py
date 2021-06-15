@@ -12,8 +12,6 @@ import json
 import aiohttp
 import asyncio
 
-from pyspark.sql.functions import count
-
 async def send_loss_info(_conf, _loss):
     async with aiohttp.ClientSession() as session:
         _request_info = _conf['request_address'] + _conf['type_loss'] + "?"
