@@ -20,6 +20,7 @@ list = list[-1:]
 print(list)
 """
 
+"""
 consumer_config = {
         'bootstrap.servers': '9.8.100.151:9092',
         'group.id': 'test1',
@@ -30,7 +31,9 @@ consumer_config = {
 try:
     consumer = Consumer(consumer_config)
     consumer.subscribe(['test'])
-    """
+"""
+
+"""
     while True:
         message = consumer.poll(timeout=0.5)
         if message is None:
@@ -39,8 +42,8 @@ try:
             print("len(messages) : ",len(message))
             decoded_msgs = message.value().decode('utf-8')
             print(decoded_msgs)
-    """
-    
+"""
+""" 
     while True:
         messages = consumer.consume(3, 0.5)
         print("len(messages) : ", len(messages))
@@ -51,6 +54,7 @@ try:
             print(decode_message)
         #decode_message = message.value().decode('utf-8')
         #print(decode_message)
+
     
 
 except Exception:
@@ -59,3 +63,14 @@ except Exception:
 
 finally:
     consumer.close()
+"""
+
+
+list_1 = [1,2,3,4,5]
+list_2 = list_1[:]
+list_1[0] = 3
+
+#print(list_2[:2])
+
+list_1 = list_1 + list_2
+print(list_1)

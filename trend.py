@@ -59,53 +59,15 @@ async def send_process_info(_opcode, _start_time, _end_time, _cycle, _count):
             print("process_connection error", str(e))
 
 
-"""
-async def status_info(_status):
-    async with aiohttp.ClientSession() as session:
-        _request_info = REQUEST_ADDRESS + conf['type_work'] + "?"
-        if _status == True:
-            _request_param = "work=start"
-        else:
-            _request_param = "work=stop"
-        try:
-            async with session.get(_request_info + _request_param) as response:
-                result = await response.read()
-        except aiohttp.ClientConnectionError as e:
-            print("status_connection error", str(e))
-"""
-
-
 async def send_loss_info(_loss):
     async with aiohttp.ClientSession() as session:
-        _request_info = REQUEST_ADDRESS + conf['type_loss'] + "?"
+        _request_info = conf['request_address'] + conf['type_loss'] + "?"
         _request_param = "loss=" + str(_loss)
         try:
             async with session.get(_request_info + _request_param) as response:
                 result = await response.read()
         except aiohttp.ClientConnectionError as e:
             print("loss_connection error", str(e))
-
-
-async def data_empty():
-    queue_clear()
-    async with aiohttp.ClientSession() as session:
-        _request_info = REQUEST_ADDRESS + conf['type_empty']
-        try:
-            async with session.get(_request_info) as response:
-                result = await response.read()            
-        except aiohttp.ClientConnectionError as e:
-            print("loss_connection error", str(e))
-
-
-def queue_clear():
-    if not row_data_queue.empty():
-        row_data_queue.get_nowait()
-    if not pre_processed_queue.empty():
-        pre_processed_queue.get_nowait()
-    if not loss_data_queue.empty():
-        loss_data_queue.get_nowait()
-    if not put_row_queue.empty():
-        put_row_queue.get_nowait()
 
 
 def create_signal(_np_data_array):
@@ -217,16 +179,19 @@ def send_row_data():
             data = data.encode('utf-8')
             producer.produce(conf['topic_trend'], data)
             producer.poll(SLEEP_TIME)
+        """
         if not loss_data_queue.empty():
             loss_data = loss_data_queue.get()
             loss_data = loss_data.encode('utf-8')
             producer.produce(conf['topic_loss'], loss_data)
             producer.poll(SLEEP_TIME)
+        """
         time.sleep(SLEEP_TIME)
 
 
 def pre_processing(STATE):
     _row_data_list = []
+    _row_temp_list = []
     process_start_time = 0
     process_end_time = 0
     process_cycle = 0
@@ -238,18 +203,20 @@ def pre_processing(STATE):
     while True:
         if not row_data_queue.empty():
             row_data = row_data_queue.get()
-            #print(row_data)
             _row_data_list.append(row_data)
             cnt = 0
-            zero_cnt = 0
+            
             back_index = 1
             _send_data_csv = ''
-            _zero_list = []
+    
+            zero_cnt = 0
+            
             for i in range(len(_row_data_list)):
                 scale_spindle_load = _row_data_list[i][2]
                 code_data = _row_data_list[i][3]
 
-                if code_data == conf['start_t_code'] and scale_spindle_load != 0:
+                if code_data == conf['start_t_code'] and scale_spindle_load != 0 and STATE != True:
+                    zero_cnt = 0
                     while True:
                         prev_index = i - back_index
                         if prev_index <= 0:
@@ -261,26 +228,10 @@ def pre_processing(STATE):
                             #asyncio.run(status_info(STATE))
                             process_start_time = _row_data_list[prev_index+1][1]
                             find_end = False
-                            for j in range(len(_row_data_list[:prev_index+1])):
-                                _op = _row_data_list[j][0]
-                                _ti = _row_data_list[j][1]
-                                _ro = str(_row_data_list[j][2])
-                                _tc = _row_data_list[j][3]
-                                _sc = str(_row_data_list[j][4])
-                                _pr = str(0)
-                                _row_data = [_op, _ti, _ro, _tc, _sc, _pr]
-                                _send_data_csv = ','.join(_row_data)
-
-                                put_row_queue.put(_send_data_csv)
-                                _loss_data = [_op, _ti, _pr]
-                                _code_with_loss = ','.join(_loss_data)
-                                loss_data_queue.put(_code_with_loss)
-
-                            #print("before cutcut")
-                            #print(_row_data_list)
                             _row_data_list = _row_data_list[prev_index+1:]
-                            #print("after cutcut")
-                            #print(_row_data_list)
+                            if len(_row_temp_list) != 0:
+                                _row_data_list = _row_temp_list + _row_data_list
+                                _row_temp_list = []
                             back_index = 1
                             break
                         else:
@@ -288,11 +239,10 @@ def pre_processing(STATE):
 
                 if code_data == conf['end_t_code'] and scale_spindle_load == 0:
                     zero_cnt += 1
-                    _zero_list.append(i)
                     if zero_cnt > conf['continue_zero_count']:
                         print("Find END")
                         zero_cnt = 0
-                        #while j in range(len(_row_data_list[:i])):
+                        
                         for j in range(len(_row_data_list[:i])):
                             _op = _row_data_list[j][0]
                             _ti = _row_data_list[j][1]
@@ -300,14 +250,11 @@ def pre_processing(STATE):
                             _tc = _row_data_list[j][3]
                             _sc = str(_row_data_list[j][4])
                             _pr = str(0)
-                            _row_data = [_op, _ti, _ro, _tc, _sc, _pr]
+                            _lo = str(0)
+                            _row_data = [_op, _ti, _ro, _tc, _sc, _pr, _lo]
                             _send_data_csv = ','.join(_row_data)
-
                             put_row_queue.put(_send_data_csv)
-                            _loss_data = [_op, _ti, _pr]
-                            _code_with_loss = ','.join(_loss_data)
-                            loss_data_queue.put(_code_with_loss)
-
+                        
                         _row_data_list = _row_data_list[i:]
 
                         if find_end == False and process_start_time != 0:
@@ -323,31 +270,34 @@ def pre_processing(STATE):
                         break
 
                 if STATE == True:
+    
                     if len(_row_data_list) >= DATA_SIZE:
                         zero = 0
+                        _end_index = 0
                         for j in range(len(_row_data_list)):
                             if _row_data_list[j][3] == conf['end_t_code'] and _row_data_list[j][2] == 0:
                                 zero += 1
-                                if zero > conf['continue_zero_count']:
+                                if(zero == 1):
+                                    _end_index = j
+                                if zero > 20:
                                     print("Find END in PROCESSING")
                                     zero = 0
-                                    _row_data_list = _row_data_list[i:]
+                                    _row_data_list = _row_data_list[:_end_index+2]
                                     if find_end == False and process_start_time != 0:
                                         STATE = False
-                                        process_opcode = _row_data_list[j][0]
-                                        process_end_time = _row_data_list[j][1]
+                                        process_opcode = _row_data_list[_end_index+1][0]
+                                        process_end_time = _row_data_list[_end_index+1][1]
                                         process_cycle = float(process_end_time) - float(process_start_time)
                                         process_count = 1
-                                        _loss_data = [process_opcode, process_end_time, str(0)]
-                                        _code_with_loss = ','.join(_loss_data)
-                                        loss_data_queue.put(_code_with_loss)
                                         asyncio.run(send_process_info(process_opcode, process_start_time, process_end_time, process_cycle, process_count))
                                         asyncio.run(send_loss_info("null"))
                                         process_start_time = 0
                                         process_count = 0
                                         find_end = True
+                                        _row_temp_list = _row_data_list[:]
+                                        _row_data_list = []
                                     break
-
+                        
                         if STATE != False:
                             #pre_processed_queue.put(_row_data_list[0:DATA_SIZE])
                             data = json.dumps(_row_data_list[0:DATA_SIZE])
@@ -360,8 +310,6 @@ def pre_processing(STATE):
                 STATE = False
                 _row_data_list = []
                 _send_data_csv = ''
-                _zero_list = []
-                asyncio.run(data_empty())
 
         time.sleep(SLEEP_TIME)
 
@@ -370,66 +318,22 @@ def zero_to_one_scaler(x):
     return x / conf['max_spindle_load']
 
 
-def anomaly_detection():
-    model = tf.keras.models.load_model(conf['model_path'])
-    while True:
-        _pre_processed_list = []
-        _load_data_array = []
-        _np_data_array = []
-        _code_with_loss = ''
-        _send_data_csv = ''
-        if not pre_processed_queue.empty():
-            _pre_processed_list = pre_processed_queue.get()
-            #print("_pre_processd_list : ", _pre_processed_list)
-            _load_data_array = np.array(_pre_processed_list)
-            _np_data_array = np.array(list(map(float, _load_data_array.T[4])))
-            result = prediction(model, _np_data_array)
-            _signal_data = create_signal(_np_data_array)
-            _mae = loss_function(result, _signal_data)
-            _code_with_loss = str(_pre_processed_list[0][0]) + "," + _pre_processed_list[0][1]  + "," + str(_mae)
-            loss_data_queue.put(_code_with_loss)
-            asyncio.run(send_loss_info(_mae))
-            print(_code_with_loss)
-            #print(_mae)            
-            _pre_processed_list[PREDICT_INDEX].append(str(result[0]))
-            _pre_processed_list[PREDICT_INDEX][4] = str(_pre_processed_list[PREDICT_INDEX][4])
-            _pre_processed_list[PREDICT_INDEX][2] = str(_pre_processed_list[PREDICT_INDEX][2])
-            _send_data_csv = ','.join(_pre_processed_list[PREDICT_INDEX])
-            print("_send_data_csv: ", _send_data_csv)
-            put_row_queue.put(_send_data_csv)
-
-        time.sleep(SLEEP_TIME)
-
-
 if __name__ == "__main__":
     STATE = multiprocessing.Value(ctypes.c_bool, False)
 
     row_data_queue = Queue()
     pre_processed_queue = Queue()
-    loss_data_queue = Queue()
+    #loss_data_queue = Queue()
     put_row_queue = Queue()
 
-    #anomaly_detection_1_p = Process(target=anomaly_detection, args=())
-    #anomaly_detection_2_p = Process(target=anomaly_detection, args=())
     get_row_data_p = Process(target=get_row_data, args=())
     send_row_data_p = Process(target=send_row_data, args=())
     pre_processing_p = Process(target=pre_processing, args=(STATE.value,))
 
-    #anomaly_detection_1_p.start()
-    #anomaly_detection_2_p.start()
     get_row_data_p.start()
     send_row_data_p.start()
     pre_processing_p.start()
 
-    #anomaly_detection_1_p.join()
-    #anomaly_detection_2_p.join()
     get_row_data_p.join()
     send_row_data_p.join()
     pre_processing_p.join()
-
-    """
-    for i in range(5):
-        p = multiprocessing.Process(target=function)
-        jobs.append(p)
-        p.start()
-    """
