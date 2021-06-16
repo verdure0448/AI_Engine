@@ -50,9 +50,11 @@ def min_scaler(_load_value):
     return _load_value
 
 
-def get_row_data():
+def get_row_data(_row_data_queue):
     """ put a decoded and tranformed list to multiprocess queue from consumer
 
+    Args:
+        _row_data_queue (multiprocessing.queues.Queue): put datas to queue from consumed message
     """
     try:
         consumer = Consumer(consumer_config)
@@ -81,7 +83,7 @@ def get_row_data():
                     decoded_msg = [_op, _ti, _sp, _tc, _ro]
                     _result_list.append(decoded_msg)
 
-                list(map(row_data_queue.put, _result_list))
+                list(map(_row_data_queue.put, _result_list))
 
             time.sleep(SLEEP_TIME)
 
@@ -93,14 +95,15 @@ def get_row_data():
         consumer.close()
 
 
-def send_row_data():
-    """produce encoded message from put_row_queue even if its not empty
+def send_row_data(_send_data_queue):
+    """produce encoded message from send_data_queue even if its not empty
 
+    Args: _send_data_queue (multiprocessing.queues.Queue): in processing datas to send through kafka producer
     """
     producer = Producer(producer_config)
     while True:
-        if not put_row_queue.empty():
-            data = put_row_queue.get()
+        if not _send_data_queue.empty():
+            data = _send_data_queue.get()
             _time = data.split(",")[1]
             data = data.encode('utf-8')
             producer.produce(conf['topic_trend'], data)
@@ -108,11 +111,13 @@ def send_row_data():
         time.sleep(SLEEP_TIME)
 
 
-def pre_processing(_STATE):
+def pre_processing(_STATE, _row_data_queue, _send_data_queue):
     """check the condition is processing state or idle state, and put datas into queue each specific situations
 
     Args:
         _STATE (bool): boolean for state is processing or not
+        _row_data_queue (multiprocessing.queues.Queue): put datas to queue from consumed message
+        _send_data_queue (multiprocessing.queues.Queue): in processing datas to send through kafka producer
 
     """
     _row_data_list = []
@@ -126,8 +131,8 @@ def pre_processing(_STATE):
     producer = Producer(producer_config)
 
     while True:
-        if not row_data_queue.empty():
-            row_data = row_data_queue.get()
+        if not _row_data_queue.empty():
+            row_data = _row_data_queue.get()
             _row_data_list.append(row_data)
             cnt = 0
             zero_cnt = 0
@@ -175,7 +180,7 @@ def pre_processing(_STATE):
                             _lo = str(0)
                             _row_data = [_op, _ti, _ro, _tc, _sc, _pr, _lo]
                             _send_data_csv = ','.join(_row_data)
-                            put_row_queue.put(_send_data_csv)
+                            _send_data_queue.put(_send_data_csv)
 
                         _row_data_list = _row_data_list[i:]
 
@@ -233,16 +238,15 @@ def pre_processing(_STATE):
         time.sleep(SLEEP_TIME)
 
 
-if __name__ == "__main__":
+def main():
     STATE = multiprocessing.Value(ctypes.c_bool, False)
 
-    row_data_queue = Queue()
-    pre_processed_queue = Queue()
-    put_row_queue = Queue()
+    _row_data_queue = Queue()
+    _send_data_queue = Queue()
 
-    get_row_data_p = Process(target=get_row_data, args=())
-    send_row_data_p = Process(target=send_row_data, args=())
-    pre_processing_p = Process(target=pre_processing, args=(STATE.value,))
+    get_row_data_p = Process(target=get_row_data, args=(_row_data_queue,))
+    send_row_data_p = Process(target=send_row_data, args=(_send_data_queue,))
+    pre_processing_p = Process(target=pre_processing, args=(STATE.value, _row_data_queue, _send_data_queue,))
 
     get_row_data_p.start()
     send_row_data_p.start()
@@ -251,3 +255,7 @@ if __name__ == "__main__":
     get_row_data_p.join()
     send_row_data_p.join()
     pre_processing_p.join()
+
+
+if __name__ == "__main__":
+    main()
