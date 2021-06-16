@@ -1,4 +1,4 @@
-from datetime import datetime
+
 from multiprocessing import Process, Queue, Value
 import multiprocessing
 import time
@@ -9,8 +9,10 @@ from confluent_kafka import KafkaException
 
 import json
 import asyncio
-import aiohttp
 import ctypes
+from async_request import send_process_info
+from async_request import send_loss_info
+
 
 with open("/home/rnd01/workspace/cnc_analyzer/config_trend.json") as jsonFile:
     conf = json.load(jsonFile)
@@ -31,43 +33,27 @@ NONE = "none"
 SLEEP_TIME = conf['sleep_time']
 DATA_SIZE = conf['data_size']
 REQUEST_ADDRESS = conf['request_address']
+ 
 
+def min_scaler(_load_value):
+    """Transform features by scaling each feature to a given range
 
-async def send_process_info(_opcode, _start_time, _end_time, _cycle, _count):
-    async with aiohttp.ClientSession() as session:
-        _request_info = REQUEST_ADDRESS + conf['type_cycle'] + "?"
-        _request_param = "opCode=" + str(_opcode) + "&startTime=" + str(_start_time) + "&endTime=" + str(
-            _end_time) + "&cycleTime=" + str(_cycle) + "&count=" + str(_count)
-        try:
-            async with session.get(_request_info + _request_param) as response:
-                if response.status == 200:
-                    result = await response.read()
-                else:
-                    print(response.status)
-        except aiohttp.ClientConnectionError as e:
-            print("process_connection error", str(e))
-
-
-async def send_loss_info(_loss):
-    async with aiohttp.ClientSession() as session:
-        _request_info = REQUEST_ADDRESS + conf['type_loss'] + "?"
-        _request_param = "loss=" + str(_loss)
-        try:
-            async with session.get(_request_info + _request_param) as response:
-                result = await response.read()
-        except aiohttp.ClientConnectionError as e:
-            print("loss_connection error", str(e))
-
-
-def min_scaler(load_value):
-    load_value = load_value * conf['max_spindle_load']
-    if load_value < conf['min_spindle_load']:
+    Args:
+        _load_value (float64): spindle load value from cnc
+    Returns:
+        float: Transformed spindle load value
+    """
+    _load_value = _load_value * conf['max_spindle_load']
+    if _load_value < conf['min_spindle_load']:
         return 0
 
-    return load_value
+    return _load_value
 
 
 def get_row_data():
+    """ put a decoded and tranformed list to multiprocess queue from consumer
+
+    """
     try:
         consumer = Consumer(consumer_config)
         consumer.subscribe([conf['topic_consumer']])
@@ -107,35 +93,28 @@ def get_row_data():
         consumer.close()
 
 
-def delivery_report(err, msg):
-    if err is not None:
-        print('Message delivery failed: {}'.format(err))
-    else:
-        print('Message delivered to {} [{}]'.format(
-            msg.topic(), msg.partition()))
-
-
-def time_to_strtime(_time):
-    _float_time = float(_time)/1e3
-    dt = datetime.fromtimestamp(_float_time)
-
-    return dt.strftime('%Y-%m-%dT%H:%M:%S.%f')
-
-
 def send_row_data():
+    """produce encoded message from put_row_queue even if its not empty
+
+    """
     producer = Producer(producer_config)
     while True:
         if not put_row_queue.empty():
             data = put_row_queue.get()
             _time = data.split(",")[1]
-            strtime = time_to_strtime(_time)
             data = data.encode('utf-8')
             producer.produce(conf['topic_trend'], data)
             producer.poll(SLEEP_TIME)
         time.sleep(SLEEP_TIME)
 
 
-def pre_processing(STATE):
+def pre_processing(_STATE):
+    """check the condition is processing state or idle state, and put datas into queue each specific situations
+
+    Args:
+        _STATE (bool): boolean for state is processing or not
+
+    """
     _row_data_list = []
     _row_temp_list = []
     process_start_time = 0
@@ -159,7 +138,7 @@ def pre_processing(STATE):
                 scale_spindle_load = _row_data_list[i][2]
                 code_data = _row_data_list[i][3]
 
-                if code_data == conf['start_t_code'] and scale_spindle_load != 0 and STATE != True:
+                if code_data == conf['start_t_code'] and scale_spindle_load != 0 and _STATE != True:
                     zero_cnt = 0
                     while True:
                         prev_index = i - back_index
@@ -168,7 +147,7 @@ def pre_processing(STATE):
                         prev_load_value = _row_data_list[prev_index][2]
                         if prev_load_value == 0:
                             print("Start")
-                            STATE = True
+                            _STATE = True
                             process_start_time = _row_data_list[prev_index+1][1]
                             find_end = False
                             _row_data_list = _row_data_list[prev_index+1:]
@@ -201,18 +180,17 @@ def pre_processing(STATE):
                         _row_data_list = _row_data_list[i:]
 
                         if find_end == False and process_start_time != 0:
-                            STATE = False
+                            _STATE = False
                             process_opcode = _row_data_list[0][0]
                             process_end_time = _row_data_list[0][1]
-                            process_cycle = float(
-                                process_end_time) - float(process_start_time)
+                            process_cycle = float(process_end_time) - float(process_start_time)
                             process_count = 1
                             process_start_time = 0
                             process_count = 0
                             find_end = True
                         break
 
-                if STATE == True:
+                if _STATE == True:
                     if len(_row_data_list) >= DATA_SIZE:
                         zero = 0
                         _end_index = 0
@@ -226,13 +204,13 @@ def pre_processing(STATE):
                                     zero = 0
                                     _row_data_list = _row_data_list[:_end_index+2]
                                     if find_end == False and process_start_time != 0:
-                                        STATE = False
+                                        _STATE = False
                                         process_opcode = _row_data_list[_end_index+1][0]
                                         process_end_time = _row_data_list[_end_index+1][1]
                                         process_cycle = float(process_end_time) - float(process_start_time)
                                         process_count = 1
-                                        asyncio.run(send_process_info(process_opcode, process_start_time, process_end_time, process_cycle, process_count))
-                                        asyncio.run(send_loss_info("null"))
+                                        asyncio.run(send_process_info(REQUEST_ADDRESS, conf['type_cycle'], process_opcode, process_start_time, process_end_time, process_cycle, process_count))
+                                        asyncio.run(send_loss_info(REQUEST_ADDRESS, conf["type_loss"], "null"))
                                         process_start_time = 0
                                         process_count = 0
                                         find_end = True
@@ -240,7 +218,7 @@ def pre_processing(STATE):
                                         _row_data_list = []
                                     break
 
-                        if STATE != False:
+                        if _STATE != False:
                             data = json.dumps(_row_data_list[0:DATA_SIZE])
                             producer.produce(conf['topic_classified'], data)
                             _row_data_list = _row_data_list[1:]
@@ -248,7 +226,7 @@ def pre_processing(STATE):
         else:
             cnt += 1
             if cnt == conf['idle_count']:
-                STATE = False
+                _STATE = False
                 _row_data_list = []
                 _send_data_csv = ''
 

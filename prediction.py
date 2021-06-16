@@ -12,15 +12,8 @@ import json
 import aiohttp
 import asyncio
 
-async def send_loss_info(_conf, _loss):
-    async with aiohttp.ClientSession() as session:
-        _request_info = _conf['request_address'] + _conf['type_loss'] + "?"
-        _request_param = "loss=" + str(_loss)
-        try:
-            async with session.get(_request_info + _request_param) as response:
-                result = await response.read()
-        except aiohttp.ClientConnectionError as e:
-            print("loss_connection error", str(e))
+from async_request import send_loss_info
+
 
 def decode_data(_conf, _messages):
     decode_msgs = str(_messages.value().decode('utf-8'))
@@ -75,7 +68,7 @@ def anomaly_detection(_conf, _model, _data):
     _mae = loss_function(_conf, result, _signal_data)
     _code_with_loss = str(_data[_predict_index][0]) + "," + _data[_predict_index][1]  + "," + str(_mae)
     print(_code_with_loss)
-    asyncio.run(send_loss_info(_conf, _mae))
+    asyncio.run(send_loss_info(_conf["request_address"], _conf["type_loss"], _mae))
     _send_data_list.append([_data[_predict_index][0], _data[_predict_index][1], str(_data[_predict_index][2]), _data[_predict_index][3], _data[_predict_index][4], str(result[0]), str(_mae)])
 
     return _send_data_list
@@ -101,12 +94,6 @@ def get_row_data(_conf):
             message = consumer.poll(timeout=_conf['sleep_time'])
             if message is None:
                 cnt += 1
-                #if cnt == _conf['idle_count']:
-                #TODO all clear
-                """
-                if cnt > 1000:
-                    print("more then 3 secs")
-                """
                 continue
                 
             if message.error():
@@ -120,7 +107,6 @@ def get_row_data(_conf):
                 _result_replace = _result.replace('"','')
                 _result_list = _result_replace.strip('][').split(', ')
                 _result_csv = ','.join(_result_list)
-                print(_result_csv)
                 producer.produce(_conf['topic_predict'], _result_csv)
 
     except Exception:
