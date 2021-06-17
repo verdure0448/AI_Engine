@@ -2,14 +2,15 @@ from confluent_kafka import Consumer
 from confluent_kafka import Producer
 from confluent_kafka import KafkaException
 
+import time
 import json
 
 def _convert_t_code(_t_code, _end_t_code):
     """Returns 'T0000' as zero code or origin Tcode
 
     Args:
-        _t_code (str) : Tool selection code from CNC
-        _end_t_code (str) : end code determined by policy
+        _t_code (str): Tool selection code from CNC
+        _end_t_code (str): end code determined by policy
 
     Returns:
         str: converted tool selection code
@@ -27,6 +28,7 @@ def _decode_data(_conf, _messages):
     Args:
         _conf (dict): configuration which loaded file as json
         _messages (cimpl.Message): consumed confluent_kafka.Message 
+        
     Returns:
         list: decoded confluent_kafka.Message
     """
@@ -53,6 +55,7 @@ def _row_data_mean(_row_data_list):
 
     Args:
         _row_data_list (list): list decoded by decode_data()
+
     Returns:
         list: combined and divided list
     '''
@@ -123,6 +126,7 @@ def _get_row_data(_conf):
                     _decoded_msg_list = []
                     _decoded_mean_msg_list = []
                     print("more then 500")
+                    _cnt = 0
                 continue
             if _message.error():
                 raise KafkaException(_message.error())
@@ -159,6 +163,7 @@ def _get_row_data(_conf):
                     _producer.poll(_conf['sleep_time'])
                     print(_data)
 
+            time.sleep(_conf['sleep_time'])
 
     except Exception:
         import traceback
@@ -167,7 +172,9 @@ def _get_row_data(_conf):
     finally:
         _consumer.close()
 
-def main():
+def run():
+    #while exit_event.is_set != True:
+
     _conf = None
     with open("/home/rnd01/workspace/cnc_analyzer/config_preprocessing.json") as jsonFile:
         _conf = json.load(jsonFile)
@@ -175,4 +182,4 @@ def main():
     _get_row_data(_conf)
 
 if __name__ == "__main__":
-    main()
+    run()
