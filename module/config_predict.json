@@ -1,7 +1,7 @@
 {
     "kafka_servers" : "9.8.100.152:9092",
     "topic_consumer" : "MH001001001-CNC001-classified",
-    "consumer_group_id" : "MH001001001-CNC001-test-05",
+    "consumer_group_id" : "MH001001001-CNC001-test-08",
     "auto_offset_reset" : "latest",
     "topic_predict" : "MH001001001-CNC001-detection",
     "sleep_time" : 0.01,

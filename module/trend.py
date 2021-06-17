@@ -211,7 +211,7 @@ def _pre_processing(_conf, _row_data_queue, _producer):
 
 def run():
     _conf = None
-    with open("/home/rnd01/workspace/cnc_analyzer/config_trend.json") as jsonFile:
+    with open("/home/rnd01/workspace/cnc_analyzer/module/config_trend.json") as jsonFile:
         _conf = json.load(jsonFile)
     
     _get_row_data(_conf)

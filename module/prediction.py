@@ -5,26 +5,15 @@ from confluent_kafka import Producer
 from confluent_kafka import KafkaException
 
 import tensorflow as tf
-
 from sklearn.metrics import mean_absolute_error
+
+import time
 import numpy as np
 import json
 import aiohttp
 import asyncio
 
 from async_request import send_loss_info
-
-
-def decode_data(_conf, _messages):
-    decode_msgs = str(_messages.value().decode('utf-8'))
-    line_msgs = decode_msgs.split("\n")
-    result_list = []
-
-    for i in range(len(line_msgs)):
-        split_decoded_msg = line_msgs[i].split(",")
-        result_list.append(split_decoded_msg)
-
-    return result_list
 
 
 def create_signal(_np_data_array):
@@ -41,7 +30,8 @@ def prediction(_conf, model, np_data_array,):
     learning_data = signal_data[0:_conf['predict_index'], 0]
     data_x_list.append(learning_data)
     create_data = np.array(data_x_list)
-    signal_data = np.reshape(create_data, (create_data.shape[0], create_data.shape[1], 1))
+    signal_data = np.reshape(
+        create_data, (create_data.shape[0], create_data.shape[1], 1))
     prediction_data = model.predict(signal_data, 1)
     prediction_list.append(prediction_data[0, 0])
 
@@ -66,10 +56,13 @@ def anomaly_detection(_conf, _model, _data):
     result = prediction(_conf, _model, _np_data_array)
     _signal_data = create_signal(_np_data_array)
     _mae = loss_function(_conf, result, _signal_data)
-    _code_with_loss = str(_data[_predict_index][0]) + "," + _data[_predict_index][1]  + "," + str(_mae)
+    _code_with_loss = str(_data[_predict_index][0]) + \
+        "," + _data[_predict_index][1] + "," + str(_mae)
     print(_code_with_loss)
-    asyncio.run(send_loss_info(_conf["request_address"], _conf["type_loss"], _mae))
-    _send_data_list.append([_data[_predict_index][0], _data[_predict_index][1], str(_data[_predict_index][2]), _data[_predict_index][3], _data[_predict_index][4], str(result[0]), str(_mae)])
+    asyncio.run(send_loss_info(
+        _conf["request_address"], _conf["type_loss"], _mae))
+    _send_data_list.append([_data[_predict_index][0], _data[_predict_index][1], str(
+        _data[_predict_index][2]), _data[_predict_index][3], _data[_predict_index][4], str(result[0]), str(_mae)])
 
     return _send_data_list
 
@@ -81,7 +74,7 @@ def get_row_data(_conf):
         'auto.offset.reset': _conf['auto_offset_reset']
     }
     producer_config = {
-                   'bootstrap.servers': _conf['kafka_servers']
+        'bootstrap.servers': _conf['kafka_servers']
     }
 
     try:
@@ -89,25 +82,27 @@ def get_row_data(_conf):
         consumer = Consumer(consumer_config)
         consumer.subscribe([_conf['topic_consumer']])
         producer = Producer(producer_config)
-        cnt = 0
+        _cnt = 0
         while True:
             message = consumer.poll(timeout=_conf['sleep_time'])
             if message is None:
-                cnt += 1
+                _cnt += 1
                 continue
-                
+
             if message.error():
                 raise KafkaException(message.error())
             else:
                 _result_csv = ''
-                cnt = 0
+                _cnt = 0
                 _data = json.loads(message.value().decode('utf-8'))
                 _result = anomaly_detection(_conf, _model, _data)
                 _result = json.dumps(_result[0])
-                _result_replace = _result.replace('"','')
+                _result_replace = _result.replace('"', '')
                 _result_list = _result_replace.strip('][').split(', ')
                 _result_csv = ','.join(_result_list)
                 producer.produce(_conf['topic_predict'], _result_csv)
+                
+            time.sleep(_conf['sleep_time'])
 
     except Exception:
         import traceback
@@ -116,11 +111,13 @@ def get_row_data(_conf):
     finally:
         consumer.close()
 
+
 def main():
-    with open("/home/rnd01/workspace/cnc_analyzer/config_predict.json") as jsonFile:
+    with open("/home/rnd01/workspace/cnc_analyzer/module/config_predict.json") as jsonFile:
         _conf = json.load(jsonFile)
 
     get_row_data(_conf)
+
 
 if __name__ == "__main__":
     main()
