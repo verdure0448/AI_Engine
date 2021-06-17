@@ -113,7 +113,7 @@ def get_row_data(_conf):
 
 
 def main():
-    with open("/home/rnd01/workspace/cnc_analyzer/module/config_predict.json") as jsonFile:
+    with open("/home/rnd01/workspace/cnc_analyzer/config/config_predict.json") as jsonFile:
         _conf = json.load(jsonFile)
 
     get_row_data(_conf)

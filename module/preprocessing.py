@@ -176,7 +176,7 @@ def run():
     #while exit_event.is_set != True:
 
     _conf = None
-    with open("/home/rnd01/workspace/cnc_analyzer/module/config_preprocessing.json") as jsonFile:
+    with open("/home/rnd01/workspace/cnc_analyzer/config/config_preprocessing.json") as jsonFile:
         _conf = json.load(jsonFile)
 
     _get_row_data(_conf)
