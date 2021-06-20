@@ -1,16 +1,18 @@
 from confluent_kafka import Consumer
 from confluent_kafka import Producer
 from confluent_kafka import KafkaException
+from multiprocessing import Event
 
 import time
 import json
 import asyncio
 import queue
 
-from async_request import send_process_info
-from async_request import send_loss_info
+from ..http.async_request import send_process_info
+from ..http.async_request import send_loss_info
 
 
+event = Event()
 STATE = False 
 _row_data_list = []
 process_start_time = 0
@@ -33,11 +35,12 @@ def _min_scaler(_load_value, _max_spindle_value, _min_spindle_value):
     return _load_value
 
 
-def _get_row_data(_conf):
+def _get_row_data(_conf, _event):
     """ put a decoded and tranformed list to multiprocess queue from consumer
 
     Args:
         _conf (dict): configuration which loaded file as json
+        _event (multiprocessing.Event): An event manages a flag that can be set to true with the set() method and reset to false with the clear() method.
     """
     _consumer_config = {
         'bootstrap.servers': _conf['kafka_servers'],
@@ -57,6 +60,8 @@ def _get_row_data(_conf):
         _producer = Producer(_producer_config)
 
         while True:
+            if _event.is_set():
+                break
             _message = _consumer.poll(timeout=_conf['sleep_time'])
             if _message is None:
                 _cnt += 1
@@ -209,12 +214,12 @@ def _pre_processing(_conf, _row_data_queue, _producer):
                 break
         
 
-def run():
+def run(_event):
     _conf = None
     with open("/home/rnd01/workspace/cnc_analyzer/config/config_trend.json") as jsonFile:
         _conf = json.load(jsonFile)
     
-    _get_row_data(_conf)
+    _get_row_data(_conf, _event)
 
 if __name__ == "__main__":
-    run()
+    run(event)

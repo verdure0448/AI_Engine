@@ -1,19 +1,19 @@
-import asyncio
-import aiohttp
 from confluent_kafka import Consumer
 from confluent_kafka import Producer
 from confluent_kafka import KafkaException
+from sklearn.metrics import mean_absolute_error
+from multiprocessing import Event
 
 import tensorflow as tf
-from sklearn.metrics import mean_absolute_error
-
 import time
 import numpy as np
 import json
-import aiohttp
 import asyncio
 
-from async_request import send_loss_info
+from  ..http.async_request import send_loss_info
+
+
+event = Event()
 
 
 def create_signal(_np_data_array):
@@ -59,15 +59,19 @@ def anomaly_detection(_conf, _model, _data):
     _code_with_loss = str(_data[_predict_index][0]) + \
         "," + _data[_predict_index][1] + "," + str(_mae)
     print(_code_with_loss)
-    asyncio.run(send_loss_info(
-        _conf["request_address"], _conf["type_loss"], _mae))
+    asyncio.run(send_loss_info(_conf["request_address"], _conf["type_loss"], _mae))
     _send_data_list.append([_data[_predict_index][0], _data[_predict_index][1], str(
         _data[_predict_index][2]), _data[_predict_index][3], _data[_predict_index][4], str(result[0]), str(_mae)])
 
     return _send_data_list
 
 
-def get_row_data(_conf):
+def get_row_data(_conf, _event):
+    """
+    Args:
+        _event (multiprocessing.Event): An event manages a flag that can be set to true with the set() method and reset to false with the clear() method.
+    """
+
     consumer_config = {
         'bootstrap.servers': _conf['kafka_servers'],
         'group.id': _conf['consumer_group_id'],
@@ -84,6 +88,8 @@ def get_row_data(_conf):
         producer = Producer(producer_config)
         _cnt = 0
         while True:
+            if _event.is_set():
+                break
             message = consumer.poll(timeout=_conf['sleep_time'])
             if message is None:
                 _cnt += 1
@@ -112,12 +118,12 @@ def get_row_data(_conf):
         consumer.close()
 
 
-def main():
+def run(_event):
     with open("/home/rnd01/workspace/cnc_analyzer/config/config_predict.json") as jsonFile:
         _conf = json.load(jsonFile)
 
-    get_row_data(_conf)
+    get_row_data(_conf, _event)
 
 
 if __name__ == "__main__":
-    main()
+    run(event)

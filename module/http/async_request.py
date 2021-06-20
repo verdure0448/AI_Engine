@@ -1,4 +1,3 @@
-import asyncio
 import aiohttp
 
 async def send_process_info(_url_head, _url_tail , _opcode, _start_time, _end_time, _cycle, _count):

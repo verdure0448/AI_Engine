@@ -2,8 +2,12 @@ from confluent_kafka import Consumer
 from confluent_kafka import Producer
 from confluent_kafka import KafkaException
 
+from multiprocessing import Event
+
 import time
 import json
+
+event = Event()
 
 def _convert_t_code(_t_code, _end_t_code):
     """Returns 'T0000' as zero code or origin Tcode
@@ -95,11 +99,12 @@ def _row_data_rolling(_decoded_mean_msg_list, _window_size, _max_spindle_load):
     return _rolling_list
 
 
-def _get_row_data(_conf):
+def _get_row_data(_conf, _event):
     """produce encoded message which is decoded, converted, calculated the average and rolled from consumer
 
     Args:
         _conf (dict): configuration which loaded file as json
+        _event (multiprocessing.Event): An event manages a flag that can be set to true with the set() method and reset to false with the clear() method.
     """
     _consumer_config = {
         'bootstrap.servers': _conf['kafka_servers'],
@@ -119,6 +124,8 @@ def _get_row_data(_conf):
         _producer = Producer(_producer_config)
         
         while True:
+            if _event.is_set():
+                break
             _message = _consumer.poll(timeout=_conf['sleep_time'])
             if _message is None:
                 _cnt += 1
@@ -164,6 +171,7 @@ def _get_row_data(_conf):
                     print(_data)
 
             time.sleep(_conf['sleep_time'])
+        print("Pre-Processing Process is ended")
 
     except Exception:
         import traceback
@@ -172,14 +180,18 @@ def _get_row_data(_conf):
     finally:
         _consumer.close()
 
-def run():
+def run(_event):
     #while exit_event.is_set != True:
 
     _conf = None
     with open("/home/rnd01/workspace/cnc_analyzer/config/config_preprocessing.json") as jsonFile:
         _conf = json.load(jsonFile)
 
-    _get_row_data(_conf)
+    _get_row_data(_conf, _event)
+
+def testFunc():
+    print("test")
 
 if __name__ == "__main__":
-    run()
+    run(event)
+
