@@ -1,12 +1,12 @@
 {
     "kafka_servers" : "9.8.100.152:9092",
-    "consumer_group_id" : "MH001001001-CNC001-test-08",
+    "consumer_group_id" : "MH001001001-CNC001-test-10",
     "auto_offset_reset" : "latest",
     "topic_consumer" : "MH001001001-CNC001-preprocessed",
     "topic_trend" : "MH001001001-CNC001-detection",
     "topic_classified" : "MH001001001-CNC001-classified",
 
-    "request_address" : "http://9.8.100.153:1234",
+    "request_address" : "http://9.8.100.153:8081",
     "type_cycle" : "/main/cycle-info",
     "type_loss" : "/main/real-time-loss",
 
