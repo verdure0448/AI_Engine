@@ -56,9 +56,8 @@ def anomaly_detection(_conf, _model, _data):
     result = prediction(_conf, _model, _np_data_array)
     _signal_data = create_signal(_np_data_array)
     _mae = loss_function(_conf, result, _signal_data)
-    _code_with_loss = str(_data[_predict_index][0]) + \
-        "," + _data[_predict_index][1] + "," + str(_mae)
-    print(_code_with_loss)
+    _code_with_loss = str(_data[_predict_index][0]) + "," + _data[_predict_index][1] + "," + str(_mae)
+    #print(_code_with_loss)
     asyncio.run(send_loss_info(_conf["request_address"], _conf["type_loss"], _mae))
     _send_data_list.append([_data[_predict_index][0], _data[_predict_index][1], str(
         _data[_predict_index][2]), _data[_predict_index][3], _data[_predict_index][4], str(result[0]), str(_mae)])
@@ -72,6 +71,7 @@ def get_row_data(_conf, _event):
         _event (multiprocessing.Event): An event manages a flag that can be set to true with the set() method and reset to false with the clear() method.
     """
 
+    print("prediction start")
     consumer_config = {
         'bootstrap.servers': _conf['kafka_servers'],
         'group.id': _conf['consumer_group_id'],
@@ -88,7 +88,8 @@ def get_row_data(_conf, _event):
         producer = Producer(producer_config)
         _cnt = 0
         while True:
-            if _event.is_set():
+            if _event.is_set() == True:
+                print("prediction process stop")
                 break
             message = consumer.poll(timeout=_conf['sleep_time'])
             if message is None:

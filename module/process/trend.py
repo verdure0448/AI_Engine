@@ -9,7 +9,6 @@ import asyncio
 import queue
 
 from ..http.async_request import send_process_info
-from ..http.async_request import send_loss_info
 
 
 event = Event()
@@ -42,6 +41,8 @@ def _get_row_data(_conf, _event):
         _conf (dict): configuration which loaded file as json
         _event (multiprocessing.Event): An event manages a flag that can be set to true with the set() method and reset to false with the clear() method.
     """
+
+    print("trend start")
     _consumer_config = {
         'bootstrap.servers': _conf['kafka_servers'],
         'group.id': _conf['consumer_group_id'],
@@ -60,7 +61,8 @@ def _get_row_data(_conf, _event):
         _producer = Producer(_producer_config)
 
         while True:
-            if _event.is_set():
+            if _event.is_set() == True:
+                print("trend process stop")
                 break
             _message = _consumer.poll(timeout=_conf['sleep_time'])
             if _message is None:
@@ -199,7 +201,7 @@ def _pre_processing(_conf, _row_data_queue, _producer):
                                 _process_cycle = float(_process_end_time) - float(process_start_time)
                                 _process_count = 1
                                 asyncio.run(send_process_info(_conf['request_address'], _conf['type_cycle'], process_opcode, process_start_time, _process_end_time, _process_cycle, _process_count))
-                                asyncio.run(send_loss_info(_conf['request_address'], _conf["type_loss"], "null"))
+                                #asyncio.run(send_loss_info(_conf['request_address'], _conf["type_loss"], "null"))
                                 process_start_time = 0
                                 _process_count = 0
                                 _find_end = True

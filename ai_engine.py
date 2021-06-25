@@ -5,7 +5,7 @@ import module.process.prediction as prediction
 from multiprocessing import Process, Event
 
 from flask import Flask
-from flask_restplus import Api, Resource, fields
+from flask_restplus import Api, Resource
 
 
 sig_preprocess = Event()
@@ -17,6 +17,15 @@ trend_state = False
 prediction_state = False
 
 def process_management(_status):
+    """To manage entire process
+    Entire processes start if _status True and stop all if _status false
+
+    Args:
+        _status (bool): True is start, False is stop
+
+    Returns:
+        bool: True is start or stop, False is nothing happen
+    """
     global sig_preprocess, sig_trend, sig_prediction
     global preprocess_state, trend_state, prediction_state
 
@@ -37,6 +46,15 @@ def process_management(_status):
         return False
 
 def preprocess_management(_status):
+    """To manage preprocess
+    Preprocesses start if _status True and stop all if _status false
+
+    Args:
+        _status (bool): True is start, False is stop
+
+    Returns:
+        bool: True is start or stop, False is nothing happen
+    """
     global sig_preprocess
     global preprocess_state
 
@@ -62,6 +80,15 @@ def preprocess_management(_status):
         return False
 
 def trend_management(_status):
+    """To manage trend process
+    Trend process start if _status True and stop all if _status false
+
+    Args:
+        _status (bool): True is start, False is stop
+
+    Returns:
+        bool: True is start or stop, False is nothing happen
+    """
     global sig_trend
     global trend_state
 
@@ -87,6 +114,15 @@ def trend_management(_status):
         return False
 
 def prediction_management(_status):
+    """To manage prediction process
+    Prediction process start if _status True and stop all if _status false
+
+    Args:
+        _status (bool): True is start, False is stop
+
+    Returns:
+        bool: True is start or stop, False is nothing happen
+    """
     global sig_prediction
     global prediction_state
 
@@ -139,7 +175,7 @@ trend_api = api.namespace(
 prediction_api = api.namespace(
     name='prediction',
     path='/process/prediction',
-    decsription='Prediction API'
+    description='Prediction API'
 )
 
 wrong_request_start = {

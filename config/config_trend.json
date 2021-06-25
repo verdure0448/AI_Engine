@@ -6,7 +6,7 @@
     "topic_trend" : "MH001001001-CNC001-detection",
     "topic_classified" : "MH001001001-CNC001-classified",
 
-    "request_address" : "http://9.8.100.153:8081",
+    "request_address" : "http://9.8.100.153:8082",
     "type_cycle" : "/main/cycle-info",
     "type_loss" : "/main/real-time-loss",
 

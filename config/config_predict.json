@@ -7,7 +7,7 @@
     "sleep_time" : 0.01,
     "model_path" : "/home/rnd01/workspace/model/bi-lstm-state-cont-model-010-165-0.005295-0.003548.h5",
     "predict_index" : 50,
-    "request_address" : "http://9.8.100.153:8081",
+    "request_address" : "http://9.8.100.153:8082",
     "type_loss" : "/main/real-time-loss",
     
     "idle_count" : 500

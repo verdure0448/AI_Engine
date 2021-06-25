@@ -7,7 +7,6 @@ from multiprocessing import Event
 import time
 import json
 
-event = Event()
 
 def _convert_t_code(_t_code, _end_t_code):
     """Returns 'T0000' as zero code or origin Tcode
@@ -106,6 +105,8 @@ def _get_row_data(_conf, _event):
         _conf (dict): configuration which loaded file as json
         _event (multiprocessing.Event): An event manages a flag that can be set to true with the set() method and reset to false with the clear() method.
     """
+    
+    print("preprocessing start")
     _consumer_config = {
         'bootstrap.servers': _conf['kafka_servers'],
         'group.id': _conf['consumer_group_id'],
@@ -124,7 +125,8 @@ def _get_row_data(_conf, _event):
         _producer = Producer(_producer_config)
         
         while True:
-            if _event.is_set():
+            if _event.is_set() == True:
+                print("preprocessing process stop")
                 break
             _message = _consumer.poll(timeout=_conf['sleep_time'])
             if _message is None:
@@ -168,10 +170,9 @@ def _get_row_data(_conf, _event):
                     _data = _message.encode('utf-8')
                     _producer.produce(_conf['topic_producer'], _data)
                     _producer.poll(_conf['sleep_time'])
-                    print(_data)
+                    #print(_data)
 
             time.sleep(_conf['sleep_time'])
-        print("Pre-Processing Process is ended")
 
     except Exception:
         import traceback
@@ -189,9 +190,7 @@ def run(_event):
 
     _get_row_data(_conf, _event)
 
-def testFunc():
-    print("test")
 
-if __name__ == "__main__":
-    run(event)
+# if __name__ == "__main__":
+#     run(_event)
 
