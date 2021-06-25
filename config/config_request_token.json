@@ -1,0 +1,10 @@
+{
+    "auth_server" : "http://9.8.100.153:8080/auth/realms/cyservice/protocol/openid-connect/token",
+    "client_id" : "was",
+    "client_secret" : "446e0b12-acef-44a2-8cc9-56d4b4632936",
+    "grant_password" : "password",
+    "grant_refresh" : "refresh_token",
+    "username" : "ai_engine",
+    "password" : "1234",
+    "refresh_token" : ""
+}
