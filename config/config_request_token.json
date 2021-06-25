@@ -5,6 +5,5 @@
     "grant_password" : "password",
     "grant_refresh" : "refresh_token",
     "username" : "ai_engine",
-    "password" : "1234",
-    "refresh_token" : ""
+    "password" : "1234"
 }
