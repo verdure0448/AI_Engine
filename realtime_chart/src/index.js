@@ -25,6 +25,8 @@ const influxQuery = influxdb.getQueryApi('HN')
 
 let trendList = [];
 let predictList = [];
+let initTrendList = [];
+let initPredictList = [];
 let startTime = 0;
 let queryState = false
 
@@ -35,23 +37,23 @@ function convertTime(rfcTime) {
 }
 
 function initData() {
-    const initQuery = 'from(bucket: "MH001001001-CNC001-detection") |> range(start: -60s, stop: now()) |> filter(fn: (r) => r["_measurement"] == "OP10-3") |> filter(fn: (r) => r["_field"] == "Trend" or r["_field"] == "PredictData") |> aggregateWindow(every: 100ms, fn: mean, createEmpty: false) |> tail(n:1000)';
+    const initQuery = 'from(bucket: "MH001001001-CNC001-detection") |> range(start: -180s, stop: now()) |> filter(fn: (r) => r["_measurement"] == "OP10-3") |> filter(fn: (r) => r["_field"] == "Trend" or r["_field"] == "PredictData") |> aggregateWindow(every: 100ms, fn: mean, createEmpty: false)';
     influxQuery.queryRows(
         initQuery, {
             next(row, tableMeta) {
                 const o = tableMeta.toObject(row);
                 if (o._field == "Trend") {
-                    trendList.push(o);
+                    initTrendList.push(o);
                 } else if (o._field == "PredictData") {
-                    predictList.push(o)
+                    initPredictList.push(o)
                 }
             }, error(error) {
                 console.log("[ERROR] : in init_data function")
                 console.log(error)
             }, complete() {
-                console.log("[INFO] : complete in init_data function ", trendList.length)
-                if (trendList.length != 0) {
-                    const lastTime = trendList[trendList.length - 1]._time
+                console.log("[INFO] : complete in init_data function ", initTrendList.length)
+                if (initTrendList.length != 0) {
+                    const lastTime = initTrendList[initTrendList.length - 1]._time
                     startTime = new Date(Date.parse(lastTime) + 100).toISOString()
                     queryState = true
                 }
@@ -122,9 +124,12 @@ async function initSciChart() {
         setTimeout(getQuery ,8000);
     }
 
-    for(let i=0; i<trendList.length; i++) {
-        rowDatas.append(convertTime(trendList[i]._time), trendList[i]._value)
-        predictDatas.append(convertTime(predictList[i]._time), predictList[i]._value)
+    let initProcess = true
+    for(let i=0; i<1000; i++) {
+        const initTrendData = initTrendList.shift()
+        const initPredictData = initPredictList.shift()
+        rowDatas.append(convertTime(initTrendData._time), initTrendData._value)
+        predictDatas.append(convertTime(initPredictData._time), initPredictData._value)
     }
 
     rowDataSeries.dataSeries = rowDatas;
@@ -138,6 +143,14 @@ async function initSciChart() {
     // sciChartSurface.chartModifiers.add(new ZoomPanModifier());
 
     const updateDataFunc = () => {
+        if(initTrendList.length != 0 && initProcess == true) {
+            const initTrendData = initTrendList.shift()
+            const initPredictData = initPredictList.shift()
+            rowDatas.append(convertTime(initTrendData._time), initTrendData._value)
+            predictDatas.append(convertTime(initPredictData._time), initPredictData._value)
+        } else {
+            initProcess = false
+        }
         if(queryState != false) {
             trendQueue.push.apply(trendQueue, trendList)
             predictQueue.push.apply(predictQueue, predictList)
@@ -148,7 +161,7 @@ async function initSciChart() {
         // to determine the current length before appending
         const i = rowDatas.count();
         
-        if(trendQueue.length != 0) {
+        if(trendQueue.length != 0 && initProcess == false) {
             const trendData = trendQueue.shift()
             const predictData = predictQueue.shift()
             //console.log(convertTime(trendData._time))
