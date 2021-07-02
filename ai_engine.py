@@ -16,6 +16,10 @@ preprocess_state = False
 trend_state = False
 prediction_state = False
 
+preprocessing_process = None
+trend_process = None
+prediction_process = None
+
 def process_management(_status):
     """To manage entire process
     Entire processes start if _status True and stop all if _status false
@@ -30,17 +34,29 @@ def process_management(_status):
     global preprocess_state, trend_state, prediction_state
 
     if _status == True and preprocess_state == False and trend_state == False and prediction_state == False:
-        preprocess_management(True)
-        trend_management(True)
-        prediction_management(True)
+        preprocess_management(_status)
+        trend_management(_status)
+        prediction_management(_status)
 
         return True
     elif _status == False and preprocess_state == True and trend_state == True and prediction_state == True:
-        preprocess_management(False)
-        trend_management(False)
-        prediction_management(False)
+        preprocess_management(_status)
+        trend_management(_status)
+        prediction_management(_status)
 
         return True
+
+    elif _status == "info" and preprocess_state == True and trend_state == True and prediction_state == True:
+        _preprocess_info = preprocess_management(_status)
+        _trend_info = trend_management(_status)
+        _prediction_info = prediction_management(_status)
+
+        _result = []
+        _result.append(_preprocess_info)
+        _result.append(_trend_info)
+        _result.append(_prediction_info)
+
+        return _result
 
     else:
         return False
@@ -57,6 +73,7 @@ def preprocess_management(_status):
     """
     global sig_preprocess
     global preprocess_state
+    global preprocessing_process
 
     if _status == True and preprocess_state == False:
         preprocess_state = True
@@ -67,7 +84,7 @@ def preprocess_management(_status):
         )
         sig_preprocess.clear()
         preprocessing_process.start()
-
+    
         return True
     
     elif _status == False and preprocess_state == True:
@@ -75,6 +92,15 @@ def preprocess_management(_status):
         sig_preprocess.set()
         
         return True
+
+    elif _status == "info" and preprocess_state == True:
+        _result = {
+            "name" : preprocessing_process.name,
+            "pid" : preprocessing_process.pid,
+            "alive" : preprocessing_process.is_alive()
+        }
+
+        return _result
 
     else:
         return False
@@ -91,6 +117,7 @@ def trend_management(_status):
     """
     global sig_trend
     global trend_state
+    global trend_process
 
     if _status == True and trend_state == False:
         trend_state = True
@@ -109,6 +136,15 @@ def trend_management(_status):
         sig_trend.set()
 
         return True
+
+    elif _status == "info" and trend_state == True:
+        _result = {
+            "name" : trend_process.name,
+            "pid" : trend_process.pid,
+            "alive" : trend_process.is_alive()
+        }
+
+        return _result
     
     else:
         return False
@@ -125,6 +161,7 @@ def prediction_management(_status):
     """
     global sig_prediction
     global prediction_state
+    global prediction_process
 
     if _status == True and prediction_state == False:
         prediction_state = True
@@ -143,6 +180,15 @@ def prediction_management(_status):
         sig_prediction.set()
 
         return True
+
+    elif _status == "info" and prediction_state == True:
+        _result = {
+            "name" : prediction_process.name,
+            "pid" : prediction_process.pid,
+            "alive" : prediction_process.is_alive()
+        }
+
+        return _result
     
     else:
         return False
@@ -191,7 +237,7 @@ class ProcessStart(Resource):
     @process_api.doc('Whole Process Start')
     def get(self):
         _process_control = process_management(True)
-        if _process_control != False:
+        if _process_control == True:
             return {'State' : 'Whole Process Start'}
         else:
             return wrong_request_start
@@ -201,17 +247,26 @@ class ProcessStop(Resource):
     @process_api.doc('whole Process Stop')
     def get(self):
         _process_control = process_management(False)
-        if _process_control != False:
+        if _process_control == True:
             return {'State' : 'Whole Process Stop'}
         else:
             return wrong_request_stop
+
+
+@process_api.route('/info_all')
+class ProcessInfo(Resource):
+    @process_api.doc('whole Process Info')
+    def get(self):
+        _process_control = process_management("info")
+        return _process_control
+
 
 @preprocess_api.route('/start')
 class PreprocessStart(Resource):
     @preprocess_api.doc('Preprocessing Process Start')
     def get(self):
         _process_control = preprocess_management(True)
-        if _process_control != False:
+        if _process_control == True:
             return {'State' : 'Preprocess Start'}
         else:
             return wrong_request_start
@@ -222,18 +277,27 @@ class PreprocessEnd(Resource):
     @preprocess_api.doc('Preprocessing Process Stop')
     def get(self):
         _process_control = preprocess_management(False)
-        if _process_control != False:
+        if _process_control == True:
             return {'State' : 'Preprocess Stop'}
         else:
             return wrong_request_stop
-        
+
+
+@preprocess_api.route('/info')
+class PreprocessInfo(Resource):
+    @preprocess_api.doc('Preprocessing Process Status')
+    def get(self):
+        _process_control = preprocess_management("info")
+
+        return _process_control
+
 
 @trend_api.route('/start')
 class TrendStart(Resource):
     @trend_api.doc('Trend Process Start')
     def get(self):
         _process_control = trend_management(True)
-        if _process_control != False:
+        if _process_control == True:
             return {'State' : 'Trend start'}
         else:
             return wrong_request_start
@@ -243,17 +307,26 @@ class TrendEnd(Resource):
     @trend_api.doc('Trend Process Stop')
     def get(self):
         _process_control = trend_management(False)
-        if _process_control != False:
+        if _process_control == True:
             return {'State' : 'Trend Stop'}
         else:
             return wrong_request_stop
+
+
+@trend_api.route('/info')
+class TrendInfo(Resource):
+    @trend_api.doc('Trend Process Status')
+    def get(self):
+        _process_control = trend_management("info")
+        return _process_control
+
 
 @prediction_api.route('/start')
 class PredictionStart(Resource):
     @prediction_api.doc('Prediction Process Start')
     def get(self):
         _process_control = prediction_management(True)
-        if _process_control != False:
+        if _process_control == True:
             return {'State' : 'Prediction start'}
         else:
             return wrong_request_start
@@ -263,10 +336,18 @@ class PredictionEnd(Resource):
     @prediction_api.doc('Prediction Process Stop')
     def get(self):
         _process_control = prediction_management(False)
-        if _process_control != False:
+        if _process_control == True:
             return {'State' : 'Prediction Stop'}
         else:
             return wrong_request_stop
+
+
+@prediction_api.route('/info')
+class PredictionInfo(Resource):
+    @prediction_api.doc('Prediction Process Status')
+    def get(self):
+        _process_control = prediction_management("info")
+        return _process_control
 
 
 if __name__ == "__main__":
