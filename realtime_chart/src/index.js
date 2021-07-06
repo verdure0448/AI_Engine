@@ -13,6 +13,8 @@ import { EZoomState } from "scichart/types/ZoomState";
 import { NumericLabelProvider } from "scichart/Charting/Visuals/Axis/LabelProvider/NumericLabelProvider";
 import { ENumericFormat } from "scichart/types/NumericFormat";
 import { EAutoRange } from "scichart/types/AutoRange";
+import { SciChartVerticalGroup } from "scichart/Charting/LayoutManager/SciChartVerticalGroup";
+import { SmartDateLabelProvider } from "scichart/Charting/Visuals/Axis/LabelProvider/SmartDateLabelProvider"
 
 const { InfluxDB } = require('@influxdata/influxdb-client');
 const influx = new InfluxDB({
@@ -25,19 +27,31 @@ const influxQuery = influxdb.getQueryApi('HN')
 
 let trendList = [];
 let predictList = [];
+let lossList = [];
 let initTrendList = [];
 let initPredictList = [];
+let initLossList = [];
 let startTime = 0;
 let queryState = false
 
-function convertTime(rfcTime) {
-    let unixTime = new Date(Date.parse(rfcTime) - (900 * 60 * 1000))
+function convertTime2Utc(rfcTime) {
+    let unixTime = new Date(Date.parse(rfcTime) /*- (900 * 60 * 1000)*/)
 
-    return unixTime.getTime()/1000
+    return parseInt(unixTime.getTime()/1000)
+}
+
+function convertUtc2Time(utcTime) {
+    let unixTime = new Date(utcTime);
+    var hours = unixTime.getHours();
+    var minutes = unixTime.getMinutes();
+    var seconds = unixTime.getSeconds();
+    var milliseconds = unixTime.getMilliseconds();
+
+    return minutes + ":" + seconds
 }
 
 function initData() {
-    const initQuery = 'from(bucket: "MH001001001-CNC001-detection") |> range(start: -180s, stop: now()) |> filter(fn: (r) => r["_measurement"] == "OP10-3") |> filter(fn: (r) => r["_field"] == "Trend" or r["_field"] == "PredictData") |> aggregateWindow(every: 100ms, fn: mean, createEmpty: false)';
+    const initQuery = 'from(bucket: "MH001001001-CNC001-detection") |> range(start: -80s, stop: -5s) |> filter(fn: (r) => r["_measurement"] == "OP10-3") |> filter(fn: (r) => r["_field"] == "Trend" or r["_field"] == "PredictData" or r["_field"] == "Loss" ) |> aggregateWindow(every: 100ms, fn: mean, createEmpty: false)';
     influxQuery.queryRows(
         initQuery, {
             next(row, tableMeta) {
@@ -46,6 +60,8 @@ function initData() {
                     initTrendList.push(o);
                 } else if (o._field == "PredictData") {
                     initPredictList.push(o)
+                } else if (o._field == "Loss") {
+                    initLossList.push(o)
                 }
             }, error(error) {
                 console.log("[ERROR] : in init_data function")
@@ -68,6 +84,10 @@ async function initSciChart() {
 
     const xAxis = new CategoryAxis(wasmContext);
     xAxis.labelProvider.numericFormat = ENumericFormat.Date_HHMM;
+    /*const xAxis = new NumericAxis(wasmContext);
+    xAxis.labelProvider.formatLabel = (data => {
+        return convertUtc2Time(data)
+    })*/
     xAxis.visibleRangeLimit = new NumberRange(1,10000);
     xAxis.growBy = new NumberRange(0.0, 0.1);
     xAxis.autoRange = EAutoRange.Never;
@@ -81,20 +101,24 @@ async function initSciChart() {
     // Create a Scatter series, and Line series and add to chart
     const rowDataSeries = new FastLineRenderableSeries(wasmContext, { stroke: "#4083B7", strokeThickness: 2 });
     const predictDataSeries = new FastLineRenderableSeries(wasmContext, { stroke: "#b77a40", strokeThickness: 2 });
-    sciChartSurface.renderableSeries.add(rowDataSeries, predictDataSeries);
+    const lossDataSeries = new FastLineRenderableSeries(wasmContext, { stroke: "#819876", strokeThickness: 2 });
+    sciChartSurface.renderableSeries.add(rowDataSeries, predictDataSeries, lossDataSeries);
 
     // Create and populate some XyDataSeries with static data
     // Note: you can pass xValues, yValues arrays to constructors, and you can use appendRange for bigger datasets
     const rowDatas = new XyDataSeries(wasmContext, { dataSeriesName: "row" });
     const predictDatas = new XyDataSeries(wasmContext, { dataSeriesName: "predict" });
+    const lossDatas = new XyDataSeries(wasmContext, { dataSeriesName: "loss" });
     
     const trendQueue = [];
     const predictQueue = [];
+    const lossQueue = [];
 
     const getQuery = () => {
         trendList = [];
         predictList = [];
-        let query = 'from(bucket: "MH001001001-CNC001-detection") |> range(start: time(v:' + (startTime) + '), stop: now()) |> filter(fn: (r) => r["_measurement"] == "OP10-3") |> filter(fn: (r) => r["_field"] == "Trend" or r["_field"] == "PredictData") |> aggregateWindow(every: 100ms, fn: mean, createEmpty: false)';
+        lossList = [];
+        let query = 'from(bucket: "MH001001001-CNC001-detection") |> range(start: time(v:' + (startTime) + '), stop: -5s) |> filter(fn: (r) => r["_measurement"] == "OP10-3") |> filter(fn: (r) => r["_field"] == "Trend" or r["_field"] == "PredictData" or r["_field"] == "Loss") |> aggregateWindow(every: 100ms, fn: mean, createEmpty: false)';
         influxQuery.queryRows(
             query,
             {
@@ -104,6 +128,8 @@ async function initSciChart() {
                         trendList.push(o);
                     } else if(o._field == "PredictData") {
                         predictList.push(o)
+                    } else if(o._field == "Loss") {
+                        lossList.push(o)
                     }
                 },
                 error(error) {
@@ -117,44 +143,56 @@ async function initSciChart() {
                         startTime = new Date(Date.parse(lastTime) + 100).toISOString()
                         queryState = true
                     }
-                    
                 },
             }
         );
-        setTimeout(getQuery ,8000);
+        setTimeout(getQuery ,2000);
     }
-
+    
     let initProcess = true
-    for(let i=0; i<1000; i++) {
+    let timeout = 0
+
+    for(let i=0; i<300; i++) {
         const initTrendData = initTrendList.shift()
         const initPredictData = initPredictList.shift()
-        rowDatas.append(convertTime(initTrendData._time), initTrendData._value)
-        predictDatas.append(convertTime(initPredictData._time), initPredictData._value)
+        const initLossData = initLossList.shift()
+        rowDatas.append(convertTime2Utc(initTrendData._time), initTrendData._value)
+        predictDatas.append(convertTime2Utc(initPredictData._time), initPredictData._value)
+        lossDatas.append(convertTime2Utc(initLossData._time), initLossData._value)
     }
+
+    timeout = parseInt(1200 / 300 * 12.5)
 
     rowDataSeries.dataSeries = rowDatas;
     predictDataSeries.dataSeries = predictDatas;
+    lossDataSeries.dataSeries = lossDatas;
 
     // Add ZoomExtentsModifier and disable extends animation
     sciChartSurface.chartModifiers.add(new ZoomExtentsModifier({ isAnimated: false }));
     // Add RubberBandZoomModifier
     sciChartSurface.chartModifiers.add(new RubberBandXyZoomModifier());
     // Add ZoomPanModifier
-    // sciChartSurface.chartModifiers.add(new ZoomPanModifier());
+    //sciChartSurface.chartModifiers.add(new ZoomPanModifier());
 
+    
     const updateDataFunc = () => {
         if(initTrendList.length != 0 && initProcess == true) {
             const initTrendData = initTrendList.shift()
             const initPredictData = initPredictList.shift()
-            rowDatas.append(convertTime(initTrendData._time), initTrendData._value)
-            predictDatas.append(convertTime(initPredictData._time), initPredictData._value)
+            const initLossData = initLossList.shift()
+            rowDatas.append(convertTime2Utc(initTrendData._time), initTrendData._value)
+            predictDatas.append(convertTime2Utc(initPredictData._time), initPredictData._value)
+            lossDatas.append(convertTime2Utc(initLossData._time), initLossData._value)
         } else {
             initProcess = false
         }
         if(queryState != false) {
             trendQueue.push.apply(trendQueue, trendList)
             predictQueue.push.apply(predictQueue, predictList)
+            lossQueue.push.apply(lossQueue, lossList)
+            console.log("queue size : ", trendQueue.length)
             queryState = false
+            timeout = parseInt(800 / trendQueue.length * 12.5)
         }
 
         // Append another data-point to the chart. We use dataSeries.count()
@@ -164,20 +202,26 @@ async function initSciChart() {
         if(trendQueue.length != 0 && initProcess == false) {
             const trendData = trendQueue.shift()
             const predictData = predictQueue.shift()
+            const lossData = lossQueue.shift()
             //console.log(convertTime(trendData._time))
-            rowDatas.append(convertTime(trendData._time), trendData._value)
-            predictDatas.append(convertTime(predictData._time), predictData._value) 
+            const trendDataTime = convertTime2Utc(trendData._time)
+            const predicDataTime = convertTime2Utc(predictData._time)
+            const lossDataTime = convertTime2Utc(lossData._time)
+
+            //console.log(trendData._time,"--------->",  temp)
+            rowDatas.append(trendDataTime, trendData._value)
+            predictDatas.append(predicDataTime, predictData._value)
+            lossDatas.append(lossDataTime, lossData._value)
         }
-        //lineData.append(new Date().getTime()/1000, 1)
-        //scatterData.append(new Date().getTime()/1000, 0.6)
+
+        //const i = temp
         
         // ZoomExtents after appending data.
         // Also see XAxis.AutoRange, and XAxis.VisibleRange for more options
         if (sciChartSurface.zoomState !== EZoomState.UserZooming) {
             xAxis.visibleRange = new NumberRange(i - 1000, i);
         }
-
-        setTimeout(updateDataFunc, 100)
+        setTimeout(updateDataFunc, timeout)       
     };
     getQuery();
     updateDataFunc();
