@@ -45,9 +45,6 @@ def get_refresh_token():
         'refresh_token' : refresh_token
     }
     res = requests.post(URL, data=_data)
-    print(res)
-    print(res.status_code)
-    print(res.text)
     if res.status_code == 200:
         token = res.text
         refresh_token = res.json()['refresh_token']
@@ -80,11 +77,7 @@ async def send_process_info(_url_head, _url_tail , _opcode, _start_time, _end_ti
                 if response.status == 200:
                     result
                 elif response.status == 401:
-                    print("[401] in send_process_info")
-                    print(_decode)
-                    print(_decode['hnerrorcode'])
                     if _decode['hnerrorcode'] == "E004":
-                        print("hello")
                         get_refresh_token()
                     elif _decode['hnerrorcode'] == "E003":
                         get_token()
@@ -93,7 +86,6 @@ async def send_process_info(_url_head, _url_tail , _opcode, _start_time, _end_ti
 
                 elif response.status == 403:
                     if _decode['hnerrorcode'] == "E005":
-                        #print('[403, E005]', result)
                         get_token()
                     else:
                         print('[403, Unknown]', result)
@@ -123,21 +115,17 @@ async def send_loss_info(_url_head, _url_tail, _loss):
                 result = await response.read()
                 _decode = json.loads(result.decode('utf-8'))
                 if response.status == 200:
-                    #print('[200]', result)
                     result
                 elif response.status == 401:
                     if _decode['hnerrorcode'] == "E004":
-                        #print('[401, E004]', result)
                         get_refresh_token()
                     elif _decode['hnerrorcode'] == "E003":
-                        #print('[401, E003]', result)
                         get_token()
                     else:
                         print('[401, Unknown]', result)
 
                 elif response.status == 403:
                     if _decode['hnerrorcode'] == "E005":
-                        #print('[403, E005]', result)
                         get_token()
                     else:
                         print('[403, Unknown]', result)
@@ -146,17 +134,3 @@ async def send_loss_info(_url_head, _url_tail, _loss):
 
         except aiohttp.ClientConnectionError as e:
             print("loss_connection error", str(e))
-
-"""async def send_detection_info(_predict):
-    async with aiohttp.ClientSession() as session:
-        _request_info = "http://9.8.100.153:8082/detection" + "?"
-        _request_param = "info=" + str(_predict)
-
-        try:
-            async with session.get(_request_info + _request_param) as response:
-                if response.status == 200:
-                    result = await response.read()
-                    print(result)
-        except aiohttp.ClientConnectionError as e:
-            print("send_detection error")
-            """
