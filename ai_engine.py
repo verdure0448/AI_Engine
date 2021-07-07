@@ -237,7 +237,6 @@ def prediction_management(_status, _model=None, _numb=None):
     prediction_process = "prediction_process_{}"
 
     if _status == True and prediction_state == False:
-        
         if _model == "bi":
             for i in range(_numb):
                 globals()[prediction_process.format(i)] = Process(
@@ -253,7 +252,7 @@ def prediction_management(_status, _model=None, _numb=None):
             return True
 
         elif _model == "conv2d":
-            for i in range():
+            for i in range(_numb):
                 globals()[prediction_process.format(i)] = Process(
                     name="prediction_conv2d",
                     target=prediction_conv2d.run,
@@ -272,13 +271,19 @@ def prediction_management(_status, _model=None, _numb=None):
     elif _status == False and prediction_state == True:
         prediction_state = False
         sig_prediction.set()
+        cnt = 0
+        for i in range(len(_prediction_list)):
+            if _prediction_list[i].is_alive:
+                cnt = cnt +1
 
-        return True
+        if cnt == len(_prediction_list):
+            _prediction_list.clear()
+            return True
+
+        return False
 
     elif _status == "info" and prediction_state == True:
         _result = []
-        print(len(_prediction_list))
-        print(_prediction_list)
         for i in range(len(_prediction_list)):
             _result.append({
                 "name" : _prediction_list[i].name,
@@ -455,6 +460,6 @@ class PredictionInfo(Resource):
 if __name__ == "__main__":
     preprocess_management(True)
     trend_management(True)
-    prediction_management(True, "bi", 4)
+    prediction_management(True, "conv2d", 4)
     
     app.run(debug=False, host='9.8.100.151', port=8080)
