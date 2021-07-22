@@ -1,0 +1,17 @@
+{
+    "kafka_servers" : "9.8.100.152:9092",
+    "consumer_group_id" : "MH001001001-CNC001-test-10",
+    "auto_offset_reset" : "latest",
+    "topic_consumer" : "MH001001001-CNC001",
+    "topic_producer" : "MH001001001-CNC001-preprocessed",
+    
+    "rolling_window" : 30,
+    "max_spindle_load" : 14000,
+    "sleep_time" : 0.01,
+    "idle_count" : 500,
+    "op_code_index" : 0,
+    "time_index" : 1,
+    "load_spindle_index" : 4,
+    "t_code_index" : 8,
+    "end_t_code" : "T0000"
+}

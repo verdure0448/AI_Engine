@@ -1,0 +1,14 @@
+{
+    "kafka_servers" : "9.8.100.152:9092",
+    "topic_consumer" : "MH001001001-CNC001-classified",
+    "consumer_group_id" : "MH001001001-CNC001-test-10",
+    "auto_offset_reset" : "latest",
+    "topic_predict" : "MH001001001-CNC001-detection",
+    "sleep_time" : 0.01,
+    "model_path" : "/home/rnd01/workspace/model/bi-lstm-state-cont-model-010-165-0.005295-0.003548.h5",
+    "predict_index" : 50,
+    "request_address" : "http://9.8.100.153:8082",
+    "type_loss" : "/main/real-time-loss",
+    
+    "idle_count" : 500
+}
