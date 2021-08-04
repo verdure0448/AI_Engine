@@ -19,7 +19,7 @@ def append_datas(p_list, msg):
         t_code = 'T0000'
 
     # op-code, time, load, t-code, scale-load
-    # print('append => {0}, {1}, {2}, {3}, {4}'.format(split_decoded_msg[0], split_decoded_msg[1], split_decoded_msg[4], t_code, scale_load))
+    print('append => {0}, {1}, {2}, {3}, {4}'.format(split_decoded_msg[0], split_decoded_msg[1], split_decoded_msg[4], t_code, scale_load))
     p_list.append([split_decoded_msg[0], split_decoded_msg[1], split_decoded_msg[4], t_code, scale_load])
 
     return p_list
@@ -36,8 +36,6 @@ def analyze_data(p_list):
     if len(p_list) > 2500: # 최대사이즈 초과시
         p_list = p_list[-2500:] # 과거 데이터 삭제
 
-    
-
     if data_status == 0: # 초기 상태에서 가공 시작점 찾기
         for i in range(len(p_list)):
             if p_list[i][3]  == 'T8080' : # T8080 첫출현 시작 이전 20개의 데이터가 있으면
@@ -51,8 +49,9 @@ def analyze_data(p_list):
                 
                         break
                 if data_status != 1:
-                    raise Exception('시작점 데이터 예외 발생.')
+                    # raise Exception('시작점 데이터 예외 발생.')
                     p_list = [] # 상기 브레이크 조건에 맞지 않으면 배열 초기화
+                    return p_list
 
     elif data_status == 1: # 가공 시작상태에서 종료점 찾기
         if p_list[-1][3] == 'T0000':
@@ -107,7 +106,7 @@ if __name__ == "__main__":
                 # print('Get queue: {0}'.format(q.get()))
                 data_list = append_datas(data_list, q.get())
                 data_list = analyze_data(data_list)
-                # print('Data list size: {0}'.format(len(data_list)))
+                print('Data list size: {0}'.format(len(data_list)))
             else:
                 sleep(0.01)
     except Exception as e:

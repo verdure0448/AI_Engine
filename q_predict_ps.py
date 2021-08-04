@@ -8,14 +8,35 @@ from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.preprocessing import image
 import requests
 
-def http_request_start():
-    response = requests.get('url', params={'sn': 'value'}, timeout=3)
+'''
+품질 예측 처리 시작 전에 업무서비스에 처리 시작을 알리는 HTTP request
+ args
+    opcode : 공정코드
+    sn : 제품 시리얼번호
+ return
+'''
+def http_request_start(opcode, sn):
+    response = requests.get('url', params={'opcode':opcode, 'sn': sn}, timeout=3)
     print("http_request_start response code: ", response.status_code)
-
-def http_request_end():
-    response = requests.get('url', params={'image.path': 'xxxx', 'predict': 1}, timeout=3)
+'''
+품질 예측 완료 후에 업무서비스에 처리 완료와 결과(예측, 이미지)를 전송하는 HTTP request
+ args
+    opcode : 공정코드
+    sn : 제품 시리얼번호
+    predict : 품질예측 인덱스
+    file_path : 품질특성 이미지파일 경로
+ return
+'''
+def http_request_end(opcode, sn, predict, file_path):
+    url = 'http://9.8.100.155:8080/quality/upload?opcode={0}&sn={1}&predict={2}'.format(opcode, sn, predict)
+    files = {'media': open(file_path, 'rb')}
+    response = requests.post(url, files=files, timeout=3)
     print("http_request_end response code: ", response.status_code)
 
+
+'''
+스핀들 부하 신호를 fft변환 처리하여 스펙토그램 이미지 추출
+'''
 def create_stft_image(signal=None, n_fft=2048, hop_length=32, win_length=1024, sr=100, file_name=None):
     stft_data = librosa.stft(signal, n_fft=n_fft, hop_length=hop_length, win_length=win_length)
     magnitude = np.abs(stft_data)
@@ -28,6 +49,9 @@ def create_stft_image(signal=None, n_fft=2048, hop_length=32, win_length=1024, s
     print('saved %s'%(file_name))
     plt.close()
 
+'''
+품질예측 메인 프로세스 처리
+'''
 def process(data):
     print('Start predict_process.')
     http_request_start()
@@ -37,7 +61,7 @@ def process(data):
     file_name = 'img/op10-3/item-%s.jpeg'%('xxxx')
     create_stft_image(signal=resample_data, file_name=file_name)
 
-    model = load_model('/home/dhkang/workspace/git/cnc_analyzer/model/quality/quaility-model-0.999023-0.998438.h5')
+    model = load_model('/home/dhkang/workspace/git/cnc_analyzer/model/quality/quaility-model-0.999512-0.998438.h5')
     # model.summary()
 
     img = image.load_img(file_name)
@@ -52,8 +76,8 @@ def process(data):
     preds = model.predict(img_tensor)
 
     print('Predicted: ', preds)
-    print('Predicted result == {0}'.format(preds.index(np.max(preds))))
-    http_request_end()
+    print('Predicted result == {0}'.format(np.argmax(preds[0])))
+    http_request_end('url', 'sn', np.argmax(preds[0]), file_name)
     print('End predict_process.')
     
 if __name__ == "__main__":
