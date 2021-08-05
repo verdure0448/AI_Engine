@@ -58,13 +58,16 @@ def analyze_data(p_list):
             print('[DEBUG] 종료코드 발견 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
             data_status = 2
         elif len(p_list) > 2000:
-            raise Exception('[DEBUG] 제품생산 C/T Over')
+            print('[DEBUG] 제품생산 C/T Over.')
+            p_list = []
+            # raise Exception('[DEBUG] 제품생산 C/T Over')
     elif data_status == 2: # 종료코드 출현 후 종료점 찾기
         if p_list[-1][3] != 'T0000': # 종료코드 이외의 값이 존재할 경우 예외처리
             print('[DEBUG] 종료점 찾기 실패')
             data_status = 0
             p_list = []
-            raise Exception('[DEBUG] 종료점 데이터 예외 발생.')
+            print('[DEBUG] 종료점 데이터 예외 발생.')
+            # raise Exception('[DEBUG] 종료점 데이터 예외 발생.')
         else:
             zero_count = 0
             for i in range(20): # 종료(작업없음)코드에서 부하값 0 출현 카운터
