@@ -10,7 +10,7 @@ import copy
 _convert_t_code = ['T1010','T1100']
 def append_datas(p_list, msg):
     split_decoded_msg = str(msg.decode('utf-8')).split(",")
-    load = int(split_decoded_msg[4])
+    load = float(split_decoded_msg[4])
     scale_load = load
     if scale_load < 200:
         scale_load = 0
@@ -18,9 +18,9 @@ def append_datas(p_list, msg):
     if t_code in _convert_t_code:
         t_code = 'T0000'
 
-    # op-code, time, load, t-code, scale-load
-    print('append => {0}, {1}, {2}, {3}, {4}'.format(split_decoded_msg[0], split_decoded_msg[1], split_decoded_msg[4], t_code, scale_load))
-    p_list.append([split_decoded_msg[0], split_decoded_msg[1], split_decoded_msg[4], t_code, scale_load])
+    # op-code, time, load, t-code, scale-load, sn
+    # print('append => {0}, {1}, {2}, {3}, {4}'.format(split_decoded_msg[0], split_decoded_msg[1], split_decoded_msg[4], t_code, scale_load, split_decoded_msg[14]))
+    p_list.append([split_decoded_msg[0], split_decoded_msg[1], load, t_code, scale_load, split_decoded_msg[14]])
 
     return p_list
 
@@ -106,7 +106,7 @@ if __name__ == "__main__":
                 # print('Get queue: {0}'.format(q.get()))
                 data_list = append_datas(data_list, q.get())
                 data_list = analyze_data(data_list)
-                print('Data list size: {0}'.format(len(data_list)))
+                # print('Data list size: {0}'.format(len(data_list)))
             else:
                 sleep(0.01)
     except Exception as e:
