@@ -71,7 +71,7 @@ def analyze_data(p_list):
                 if p_list[-(i+1)][3] == 'T0000' and p_list[-(i+1)][4] == 0:
                     zero_count += 1 
             if zero_count == 20:# 0 부하가 20개 이상 출현시에 종료점으로 OK
-                print('[DEBUG] 1 Cycle 제품 가공 부하값 추출 성공')
+                print('[DEBUG] 1 Cycle 제품 가공 부하값 추출 성공 C/T: ', len(p_list[:-20]))
                 copy_data = copy.deepcopy(p_list[:-20])
                 # 제품 품질 판정 처리 프로세스 호출
                 p_predict = Process(name='Quality predict', target=q_predict_ps.process, args=(copy_data,))

@@ -87,7 +87,7 @@ def process(datas):
     preds = model.predict(img_tensor)
     predict_idx = np.argmax(preds[0])
     print('Predicted: ', preds)
-    print('Predicted result ==> {0} : {1}%'.format(predict_idx, preds[0][predict_idx]))
+    print('Predicted result ==> {0} : {1}'.format(predict_idx, preds[0][predict_idx]))
     http_request_end(opcode, sn, predict_idx, preds[0][predict_idx], file_name)
     print('End predict_process.')
     
