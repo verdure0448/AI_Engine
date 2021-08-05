@@ -29,8 +29,8 @@ def http_request_start(opcode, sn):
     file_path : 품질특성 이미지파일 경로
  return
 '''
-def http_request_end(opcode, sn, predict, file_path):
-    url = 'http://9.8.100.153:8082/quality/end?opcode={0}&sn={1}&predict={2}'.format(opcode, sn, predict)
+def http_request_end(opcode, sn, predict, acc, file_path):
+    url = 'http://9.8.100.153:8082/quality/end?opcode={0}&sn={1}&predict={2}&acc={3}'.format(opcode, sn, predict, acc)
     files = {'media': open(file_path, 'rb')}
     response = requests.post(url, files=files, timeout=3)
     print("http_request_end response code: ", response.status_code)
@@ -85,10 +85,10 @@ def process(datas):
     # plt.show()
 
     preds = model.predict(img_tensor)
-
+    predict_idx = np.argmax(preds[0])
     print('Predicted: ', preds)
-    print('Predicted result == {0}'.format(np.argmax(preds[0])))
-    http_request_end(opcode, sn, np.argmax(preds[0]), file_name)
+    print('Predicted result ==> {0} : {1}%'.format(predict_idx, preds[0][predict_idx]))
+    http_request_end(opcode, sn, predict_idx, preds[0][predict_idx], file_name)
     print('End predict_process.')
     
 if __name__ == "__main__":
