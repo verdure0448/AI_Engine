@@ -1,5 +1,6 @@
 from time import sleep
 import librosa
+import librosa.display
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -8,6 +9,7 @@ from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.preprocessing import image
 import requests
 
+from PIL import Image
 '''
 품질 예측 처리 시작 전에 업무서비스에 처리 시작을 알리는 HTTP request
  args
@@ -16,7 +18,7 @@ import requests
  return
 '''
 def http_request_start(opcode, sn):
-    response = requests.get('url', params={'opcode':opcode, 'sn': sn}, timeout=3)
+    response = requests.get('http://9.8.100.153:8082/quality/start', params={'opcode':opcode, 'sn': sn}, timeout=3)
     print("http_request_start response code: ", response.status_code)
 '''
 품질 예측 완료 후에 업무서비스에 처리 완료와 결과(예측, 이미지)를 전송하는 HTTP request
@@ -28,7 +30,7 @@ def http_request_start(opcode, sn):
  return
 '''
 def http_request_end(opcode, sn, predict, file_path):
-    url = 'http://9.8.100.155:8080/quality/upload?opcode={0}&sn={1}&predict={2}'.format(opcode, sn, predict)
+    url = 'http://9.8.100.153:8082/quality/end?opcode={0}&sn={1}&predict={2}'.format(opcode, sn, predict)
     files = {'media': open(file_path, 'rb')}
     response = requests.post(url, files=files, timeout=3)
     print("http_request_end response code: ", response.status_code)
@@ -49,18 +51,27 @@ def create_stft_image(signal=None, n_fft=2048, hop_length=32, win_length=1024, s
     print('saved %s'%(file_name))
     plt.close()
 
+def check_image_size(img_path):
+    img = Image.open(img_path)
+    print('image size ====> ', img.size)
+    new_img = img.resize((558, 271), resample=Image.LANCZOS)
+    new_img.save(img_path)
 '''
 품질예측 메인 프로세스 처리
 '''
-def process(data):
+def process(datas):
     print('Start predict_process.')
-    http_request_start()
+    opcode = datas[0][0] # 대표 공정코드 
+    sn = datas[0][5]
+    http_request_start(opcode, sn)
     # 데이터 전처리
-    resample_data = librosa.resample(data[2].astype(np.float32), len(data[2]), 10240)
+    # input_signal = [float(i) for i in data[2]]
+    input_signal = [data[2] for data in datas]
+    resample_data = librosa.resample(np.array(input_signal, dtype=np.float), len(input_signal), 10240)
 
-    file_name = 'img/op10-3/item-%s.jpeg'%('xxxx')
+    file_name = 'img/%s/item-%s.jpeg'%(opcode, sn)
     create_stft_image(signal=resample_data, file_name=file_name)
-
+    check_image_size(file_name)
     model = load_model('/home/dhkang/workspace/git/cnc_analyzer/model/quality/quaility-model-0.999512-0.998438.h5')
     # model.summary()
 
@@ -77,7 +88,7 @@ def process(data):
 
     print('Predicted: ', preds)
     print('Predicted result == {0}'.format(np.argmax(preds[0])))
-    http_request_end('url', 'sn', np.argmax(preds[0]), file_name)
+    http_request_end(opcode, sn, np.argmax(preds[0]), file_name)
     print('End predict_process.')
     
 if __name__ == "__main__":
