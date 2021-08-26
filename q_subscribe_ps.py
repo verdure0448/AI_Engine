@@ -22,7 +22,7 @@ def on_assign(c, p):
 
 _topic = 'MH001001001-CNC001'
 def process(q):
-    print('Start subscribe_process.')
+    print('[DEBUG] Start subscribe_process.')
     consumer = Consumer(_consumer_config)
     consumer.subscribe([_topic], on_assign=on_assign)
     # consumer.subscribe(['MH001001001-CNC001'])

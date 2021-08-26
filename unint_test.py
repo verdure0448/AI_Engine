@@ -1,76 +1,97 @@
-from confluent_kafka import Consumer
-from confluent_kafka import KafkaException
+from time import sleep
+import librosa
+import librosa.display
+import numpy as np
+import matplotlib.pyplot as plt
 
-"""
-list = []
-for i in range(36):
-    list.append(i)
+from tensorflow.keras import models
+from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.preprocessing import image
+import requests
+
+from PIL import Image
+import plotly.io as pio
+import plotly.graph_objects as go
+import pandas as pd
+def ShowGraph(signal):
+    pio.templates.default = "plotly_dark"
+   
+    fig = go.Figure(layout=go.Layout(height=600, width=1200))
+
+    fig = fig.add_trace(go.Scatter(y=signal, mode='lines', name = 'signal', line=dict(width=1)))
+
+    fig.update_layout(title='value',
+                    xaxis_title='x',
+                    yaxis_title='y')
+    fig.show()
+'''
+품질 예측 처리 시작 전에 업무서비스에 처리 시작을 알리는 HTTP request
+ args
+    opcode : 공정코드
+    sn : 제품 시리얼번호
+ return
+'''
 
 
-def row_data_rolling(_list, _window_size):
-    rolling_list = []
-    for i in range(len(_list)-_window_size):
-        rolling_list.append(sum(_list[i:_window_size+i])/_window_size)
+'''
+스핀들 부하 신호를 fft변환 처리하여 스펙토그램 이미지 추출
+'''
+# def create_stft_image(signal=None, n_fft=2048, hop_length=32, win_length=1024, sr=100, file_name=None):
+def create_stft_image(signal=None, n_fft=256, hop_length=20, win_length=128, sr=100, file_name=None):
+    stft_data = librosa.stft(signal, n_fft=n_fft, hop_length=hop_length, win_length=win_length)
+    magnitude = np.abs(stft_data)
+    log_spectrogram = librosa.amplitude_to_db(magnitude, ref=np.max)
+    plt.figure(figsize=(8,4))
+    librosa.display.specshow(log_spectrogram, sr=sr, hop_length=hop_length)
+    plt.ylim(0, int(n_fft/2)+1)
+    plt.axis('off')
+    plt.savefig(fname=file_name, bbox_inches='tight', pad_inches=0, dpi=90)
+    print('saved %s'%(file_name))
+    # plt.close()
 
-    return rolling_list
-
-#print(row_data_rolling(list, 30))
-
-list = list[-1:]
-print(list)
-"""
-
-"""
-consumer_config = {
-        'bootstrap.servers': '9.8.100.151:9092',
-        'group.id': 'test1',
-        'auto.offset.reset': 'latest'
-    }
-    ### auto.offset.reset earliest
-
-try:
-    consumer = Consumer(consumer_config)
-    consumer.subscribe(['test'])
-"""
-
-"""
-    while True:
-        message = consumer.poll(timeout=0.5)
-        if message is None:
-            continue
-        else:
-            print("len(messages) : ",len(message))
-            decoded_msgs = message.value().decode('utf-8')
-            print(decoded_msgs)
-"""
-""" 
-    while True:
-        messages = consumer.consume(3, 0.5)
-        print("len(messages) : ", len(messages))
-        if messages is None:
-            continue
-        for message in messages:
-            decode_message = message.value().decode('utf-8')
-            print(decode_message)
-        #decode_message = message.value().decode('utf-8')
-        #print(decode_message)
-
+def check_image_size(img_path):
+    img = Image.open(img_path)
+    print('image size ====> ', img.size)
+    new_img = img.resize((558, 271), resample=Image.LANCZOS)
+    new_img.save(img_path)
+'''
+품질예측 메인 프로세스 처리
+'''
+def process(signal):
+    print('Start predict_process.')
     
+    resample_data = librosa.resample(np.array(signal, dtype=np.float), len(signal), 10240)
 
-except Exception:
-        import traceback
-        print(traceback.format_exc())
+    file_name = 'img/%s/item-%s.jpeg'%('test', 'sample')
+    create_stft_image(signal=resample_data, file_name=file_name)
+    check_image_size(file_name)
+    # model = load_model('/home/dhkang/workspace/git/cnc_analyzer/model/quality/quaility-model-0.999512-0.998438.h5')
+    # # model.summary()
 
-finally:
-    consumer.close()
-"""
+    # img = image.load_img(file_name)
+    # img_tensor = image.img_to_array(img)
+    # img_tensor = np.expand_dims(img_tensor, axis=0)
+    # img_tensor /= 255.
+    # print(img_tensor.shape)
+
+    # # plt.imshow(img_tensor[0])
+    # # plt.show()
+
+    # preds = model.predict(img_tensor)
+    # predict_idx = np.argmax(preds[0])
+    # print('Predicted: ', preds)
+    # print('Predicted result ==> {0} : {1}'.format(predict_idx, preds[0][predict_idx]))
+    # print('End predict_process.')
 
 
-list_1 = [1,2,3,4,5]
-list_2 = list_1[:]
-list_1[0] = 3
+if __name__ == "__main__":
+    data = pd.read_csv('/home/dhkang/workspace/git/AI_Engine/temp/sample1.csv')
+    data.info()
 
-#print(list_2[:2])
+    for i in data.index:
+        if data.at[i, 'Tcode'] == 'T2020':
+           data.at[i, 'Load'] *= 3
+    
+    # ShowGraph(data.Load)
 
-list_1 = list_1 + list_2
-print(list_1)
+    process(data.Load)

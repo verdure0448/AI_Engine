@@ -3,6 +3,7 @@ import librosa
 import librosa.display
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
 from tensorflow.keras import models
 from tensorflow.keras.models import Model, load_model
@@ -10,6 +11,22 @@ from tensorflow.keras.preprocessing import image
 import requests
 
 from PIL import Image
+import plotly.io as pio
+import plotly.graph_objects as go
+
+
+
+def ShowGraph(signal):
+    pio.templates.default = "plotly_dark"
+   
+    fig = go.Figure(layout=go.Layout(height=600, width=1200))
+
+    fig = fig.add_trace(go.Scatter(y=signal, mode='lines', name = 'signal', line=dict(width=1)))
+
+    fig.update_layout(title='value',
+                    xaxis_title='x',
+                    yaxis_title='y')
+    fig.show()
 '''
 품질 예측 처리 시작 전에 업무서비스에 처리 시작을 알리는 HTTP request
  args
@@ -39,7 +56,8 @@ def http_request_end(opcode, sn, predict, acc, file_path):
 '''
 스핀들 부하 신호를 fft변환 처리하여 스펙토그램 이미지 추출
 '''
-def create_stft_image(signal=None, n_fft=2048, hop_length=32, win_length=1024, sr=100, file_name=None):
+# def create_stft_image(signal=None, n_fft=2048, hop_length=32, win_length=1024, sr=100, file_name=None):
+def create_stft_image(signal=None, n_fft=256, hop_length=20, win_length=128, sr=100, file_name=None):
     stft_data = librosa.stft(signal, n_fft=n_fft, hop_length=hop_length, win_length=win_length)
     magnitude = np.abs(stft_data)
     log_spectrogram = librosa.amplitude_to_db(magnitude, ref=np.max)
@@ -47,32 +65,40 @@ def create_stft_image(signal=None, n_fft=2048, hop_length=32, win_length=1024, s
     librosa.display.specshow(log_spectrogram, sr=sr, hop_length=hop_length)
     plt.ylim(0, int(n_fft/2)+1)
     plt.axis('off')
-    plt.savefig(fname=file_name, bbox_inches='tight', pad_inches=0, dpi=90)
+    plt.savefig(fname=file_name, bbox_inches='tight', pad_inches=0, dpi=100)
     print('saved %s'%(file_name))
     plt.close()
 
 def check_image_size(img_path):
     img = Image.open(img_path)
     print('image size ====> ', img.size)
-    new_img = img.resize((558, 271), resample=Image.LANCZOS)
+    new_img = img.resize((620, 302), resample=Image.LANCZOS)
     new_img.save(img_path)
 '''
 품질예측 메인 프로세스 처리
 '''
 def process(datas):
-    print('Start predict_process.')
+    print('[DEBUG] Start predict_process.')
+    # 텐서플로워 로그 출력 레벨 설정
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.WARN)
+    
     opcode = datas[0][0] # 대표 공정코드 
     sn = datas[0][5]
     http_request_start(opcode, sn)
     # 데이터 전처리
     # input_signal = [float(i) for i in data[2]]
     input_signal = [data[2] for data in datas]
+    # ShowGraph(input_signal)
+    # for data in datas:
+    #     if data[3] == 'T2020':
+    #         print(data[2])   
+
     resample_data = librosa.resample(np.array(input_signal, dtype=np.float), len(input_signal), 10240)
 
     file_name = 'img/%s/item-%s.jpeg'%(opcode, sn)
     create_stft_image(signal=resample_data, file_name=file_name)
     check_image_size(file_name)
-    model = load_model('/home/dhkang/workspace/git/cnc_analyzer/model/quality/quaility-model-0.999512-0.998438.h5')
+    model = load_model('/home/dhkang/workspace/git/cnc_analyzer/model/quality/quaility-model-0.994629-0.998438.h5')
     # model.summary()
 
     img = image.load_img(file_name)
@@ -86,10 +112,10 @@ def process(datas):
 
     preds = model.predict(img_tensor)
     predict_idx = np.argmax(preds[0])
-    print('Predicted: ', preds)
-    print('Predicted result ==> {0} : {1}'.format(predict_idx, preds[0][predict_idx]))
+    print('[DEBUG] Predicted: ', preds)
+    print('[DEBUG] Predicted result ==> {0} : {1}'.format(predict_idx, preds[0][predict_idx]))
     http_request_end(opcode, sn, predict_idx, preds[0][predict_idx], file_name)
-    print('End predict_process.')
+    print('[DEBUG] End predict_process.')
     
 if __name__ == "__main__":
     data = []
